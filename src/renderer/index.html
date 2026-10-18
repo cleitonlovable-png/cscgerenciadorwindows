@@ -472,15 +472,57 @@
       filtered.forEach(app => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-[#0B1120]/60 transition-colors";
+
+        let inlineStatusHtml = '';
+        if (app.uninstallState === 'uninstalling') {
+          inlineStatusHtml = `
+            <div class="flex items-center gap-2 ml-3 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+              <div class="w-28 h-2 rounded-full bg-[#0B1120] overflow-hidden border border-slate-700">
+                <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300" style="width: ${app.uninstallProgress || 15}%"></div>
+              </div>
+              <span class="text-xs font-bold text-cyan-400 animate-pulse">${app.uninstallProgress || 15}% Desinstalando...</span>
+            </div>
+          `;
+        } else if (app.uninstallState === 'done') {
+          inlineStatusHtml = `
+            <span class="ml-3 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+              <span>✓</span>
+              <span>Desinstalado com sucesso</span>
+            </span>
+          `;
+        }
+
+        let actionBtnHtml = '';
+        if (app.uninstallState === 'uninstalling') {
+          actionBtnHtml = `
+            <button disabled class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold cursor-wait">
+              Removendo...
+            </button>
+          `;
+        } else if (app.uninstallState === 'done') {
+          actionBtnHtml = `
+            <span class="text-xs font-bold text-emerald-400">Concluído</span>
+          `;
+        } else {
+          actionBtnHtml = `
+            <button onclick="uninstallApp(${app.id})" class="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold transition-all">
+              Desinstalar
+            </button>
+          `;
+        }
+
         tr.innerHTML = `
           <td class="py-3 px-4">
-            <input type="checkbox" ${app.selected ? 'checked' : ''} onchange="toggleAppSelect(${app.id}, this.checked)" class="w-4 h-4 accent-cyan-500 rounded cursor-pointer">
+            <input type="checkbox" ${app.selected ? 'checked' : ''} ${app.uninstallState ? 'disabled' : ''} onchange="toggleAppSelect(${app.id}, this.checked)" class="w-4 h-4 accent-cyan-500 rounded cursor-pointer">
           </td>
           <td class="py-3 px-4">
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 rounded-lg bg-cyan-500/15 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0">${app.icon}</div>
               <div>
-                <div class="font-semibold text-white">${app.name}</div>
+                <div class="flex flex-wrap items-center gap-1">
+                  <span class="font-semibold ${app.uninstallState === 'done' ? 'line-through text-slate-400' : 'text-white'}">${app.name}</span>
+                  ${inlineStatusHtml}
+                </div>
                 <div class="text-xs text-slate-400">${app.publisher} • v${app.version}</div>
               </div>
             </div>
@@ -490,16 +532,14 @@
           </td>
           <td class="py-3 px-4 font-semibold ${app.sizeMB >= 500 ? 'text-amber-400' : 'text-slate-200'}">${app.sizeStr}</td>
           <td class="py-3 px-4 text-right">
-            <button onclick="uninstallApp(${app.id})" class="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold transition-all">
-              Desinstalar
-            </button>
+            ${actionBtnHtml}
           </td>
         `;
         tbody.appendChild(tr);
       });
 
-      document.getElementById('badge-app-count').textContent = appsData.length;
-      const selCount = appsData.filter(a => a.selected).length;
+      document.getElementById('badge-app-count').textContent = appsData.filter(a => a.uninstallState !== 'done').length;
+      const selCount = appsData.filter(a => a.selected && !a.uninstallState).length;
       const btnBatch = document.getElementById('btn-batch-uninstall');
       if (selCount > 0) {
         btnBatch.classList.remove('hidden');
@@ -516,33 +556,46 @@
     }
 
     function toggleSelectAllApps(cb) {
-      appsData.forEach(a => a.selected = cb.checked);
+      appsData.forEach(a => {
+        if (!a.uninstallState) a.selected = cb.checked;
+      });
       renderApps();
     }
 
     async function uninstallApp(id) {
       const app = appsData.find(a => a.id === id);
-      if (!app) return;
+      if (!app || app.uninstallState) return;
+
+      app.uninstallState = 'uninstalling';
+      app.uninstallProgress = 12;
+      app.selected = false;
+      renderApps();
+
+      const progressTimer = setInterval(() => {
+        if (app.uninstallState === 'uninstalling' && app.uninstallProgress < 92) {
+          app.uninstallProgress = Math.min(92, app.uninstallProgress + Math.floor(Math.random() * 18) + 10);
+          renderApps();
+        }
+      }, 280);
+
       if (isDesktop) {
         await window.cscApi.uninstallApp(app);
-        showToast(`Desinstalador de "${app.name}" iniciado no Windows!`);
       } else {
-        appsData = appsData.filter(a => a.id !== id);
-        renderApps();
-        showToast(`"${app.name}" removido com sucesso!`);
+        await new Promise(r => setTimeout(r, 1700));
       }
+
+      clearInterval(progressTimer);
+      app.uninstallProgress = 100;
+      app.uninstallState = 'done';
+      renderApps();
+      showToast(`"${app.name}" — Desinstalado com sucesso!`);
     }
 
     async function uninstallSelectedApps() {
-      const selected = appsData.filter(a => a.selected);
+      const selected = appsData.filter(a => a.selected && !a.uninstallState);
       for (const app of selected) {
-        if (isDesktop) await window.cscApi.uninstallApp(app);
+        uninstallApp(app.id);
       }
-      if (!isDesktop) {
-        appsData = appsData.filter(a => !a.selected);
-        renderApps();
-      }
-      showToast(`${selected.length} desinstalador(es) disparado(s)!`);
     }
 
     async function loadDisks() {

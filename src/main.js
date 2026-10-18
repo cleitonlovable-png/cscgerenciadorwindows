@@ -288,7 +288,13 @@ ipcMain.handle('uninstall-app', async (_event, appObj) => {
     if (!appObj || !appObj.uninstallCmd) {
       return { ok: false, error: 'Comando de desinstalação não encontrado.' };
     }
-    exec(appObj.uninstallCmd);
+    await new Promise((resolve) => {
+      const child = exec(appObj.uninstallCmd, () => resolve());
+      // Caso o desinstalador abra em background e finalize, resolve ao fechar
+      child.on('exit', () => resolve());
+      // Timeout de segurança caso o instalador pendure processo filho
+      setTimeout(() => resolve(), 25000);
+    });
     return { ok: true };
   } catch (err) {
     return { ok: false, error: String(err) };
