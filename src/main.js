@@ -1,8 +1,79 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { exec } = require('child_process');
 const os = require('os');
 const fs = require('fs');
+
+let mainWindow = null;
+
+function sendUpdateStatus(statusObj) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', statusObj);
+  }
+}
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => {
+    sendUpdateStatus({ state: 'checking', message: 'Verificando atualizações...' });
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    sendUpdateStatus({
+      state: 'available',
+      version: info.version,
+      message: `Nova versão v${info.version} encontrada! Baixando automaticamente...`
+    });
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    sendUpdateStatus({
+      state: 'up-to-date',
+      version: app.getVersion(),
+      message: `Atualizado (v${app.getVersion()})`
+    });
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    const pct = Math.round(progressObj.percent || 0);
+    sendUpdateStatus({
+      state: 'downloading',
+      percent: pct,
+      message: `Baixando atualização: ${pct}%`
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    sendUpdateStatus({
+      state: 'downloaded',
+      version: info.version,
+      message: `Atualização v${info.version} pronta! Reiniciando para aplicar...`
+    });
+    // Reinicia e instala automaticamente após 3 segundos
+    setTimeout(() => {
+      autoUpdater.quitAndInstall(true, true);
+    }, 3000);
+  });
+
+  autoUpdater.on('error', (err) => {
+    sendUpdateStatus({
+      state: 'error',
+      message: `Auto-Update pronto (v${app.getVersion()})`,
+      detail: String(err)
+    });
+  });
+
+  // Checa ao iniciar e depois a cada 5 minutos
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    }, 5 * 60 * 1000);
+  }
+}
 
 function runPowerShell(psCommand) {
   return new Promise((resolve, reject) => {
@@ -21,7 +92,7 @@ function runPowerShell(psCommand) {
 }
 
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
     minWidth: 1024,
@@ -41,6 +112,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  setupAutoUpdater();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -49,6 +121,27 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// ==========================================
+// 0. AUTO-UPDATER IPC HANDLERS
+// ==========================================
+ipcMain.handle('get-app-version', () => app.getVersion());
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    if (!app.isPackaged) {
+      return { ok: true, dev: true, version: app.getVersion() };
+    }
+    const res = await autoUpdater.checkForUpdates();
+    return { ok: true, version: app.getVersion(), updateInfo: res?.updateInfo };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('install-update-now', () => {
+  autoUpdater.quitAndInstall(true, true);
 });
 
 // ==========================================
@@ -126,7 +219,6 @@ ipcMain.handle('optimize-system', async () => {
 
 ipcMain.handle('set-power-plan', async (_event, planType) => {
   try {
-    // Standard Windows Power Scheme GUIDs
     const guids = {
       Eco: 'a1841308-3541-4fab-bc81-f71556f20b4a',
       Equilibrado: '381b4222-f694-41f0-9685-ff5bb260df2e',
@@ -196,7 +288,6 @@ ipcMain.handle('uninstall-app', async (_event, appObj) => {
     if (!appObj || !appObj.uninstallCmd) {
       return { ok: false, error: 'Comando de desinstalação não encontrado.' };
     }
-    // Dispara o desinstalador oficial do programa no Windows
     exec(appObj.uninstallCmd);
     return { ok: true };
   } catch (err) {

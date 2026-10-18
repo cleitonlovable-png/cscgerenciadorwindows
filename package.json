@@ -1,6 +1,6 @@
 {
   "name": "csc-gerenciador",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CSC Gerenciador — Suite de Desempenho, Aplicativos e Análise de Disco para Windows",
   "main": "src/main.js",
   "author": "CSC Labs",
@@ -11,8 +11,11 @@
   },
   "scripts": {
     "start": "electron .",
-    "build:exe": "electron-builder --win portable",
-    "deploy:cf": "npx wrangler pages deploy src/renderer --project-name cscgerenciadorwindows"
+    "build:exe": "electron-builder --win nsis portable --publish never",
+    "deploy:cf": "npx wrangler pages deploy src/renderer --project-name cscgerenciadorwindows --branch main --commit-dirty=true"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "build": {
     "appId": "com.csc.gerenciador",
@@ -24,10 +27,30 @@
       "src/**/*",
       "package.json"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "cleitonlovable-png",
+        "repo": "cscgerenciadorwindows",
+        "releaseType": "release"
+      }
+    ],
     "win": {
       "target": [
+        "nsis",
         "portable"
-      ],
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CSC Gerenciador",
+      "artifactName": "CSC-Gerenciador-Setup.exe"
+    },
+    "portable": {
       "artifactName": "CSC-Gerenciador-Portable.exe"
     }
   },

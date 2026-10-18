@@ -1,4 +1,4 @@
-name: Build Windows EXE & Release
+name: Auto-Update Build & Release (.EXE)
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
+  release-windows:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -23,20 +23,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Portable EXE
-        run: npm run build:exe
-
-      - name: Upload EXE Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: CSC-Gerenciador-Portable
-          path: dist/CSC-Gerenciador-Portable.exe
-
-      - name: Publish GitHub Release with EXE
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0
-          name: CSC Gerenciador Windows v1.0.0 (.EXE)
-          files: dist/CSC-Gerenciador-Portable.exe
+      - name: Auto-Bump Version & Publish Auto-Update Release
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          $baseVer = $pkg.version -replace '\.\d+$', ''
+          $newVer = "$baseVer.${{ github.run_number }}"
+          npm version $newVer --no-git-tag-version --allow-same-version
+          npx electron-builder --win nsis portable --publish always
