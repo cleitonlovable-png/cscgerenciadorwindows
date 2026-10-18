@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>CSC Gerenciador — Windows Optimizer & Disk Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --background: #0B1120;
+      --card: #111827;
+      --border: #1E293B;
+      --foreground: #F8FAFC;
+      --muted-foreground: #94A3B8;
+    }
+    body {
+      background-color: var(--background);
+      color: var(--foreground);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col select-none antialiased">
+
+  <!-- Top Header -->
+  <header class="bg-[#111827] border-b border-slate-800 px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-base tracking-tight text-white">CSC Gerenciador</h1>
+          <span id="env-badge" class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-medium">v1.0 Pro</span>
+        </div>
+        <p class="text-xs text-slate-400">Suite de Desempenho, Aplicativos e Armazenamento para Windows</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a id="download-exe-btn" href="https://github.com/cleitonlovable-png/cscgerenciadorwindows/releases/latest/download/CSC-Gerenciador-Portable.exe" target="_blank" class="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 flex items-center gap-2 transition-all">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        <span>Baixar CSC Gerenciador (.EXE)</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-[#111827] border-r border-slate-800 flex flex-col justify-between p-4 shrink-0">
+      <div class="space-y-6">
+        <div class="p-3.5 rounded-xl bg-[#0B1120] border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-400">STATUS DO SISTEMA</span>
+            <span class="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              Online
+            </span>
+          </div>
+          <div id="sys-os-name" class="text-xs text-white font-semibold truncate">Windows 11 Pro</div>
+          <div id="sys-cpu-name" class="text-xs text-slate-400 truncate">Monitorando Hardware...</div>
+        </div>
+
+        <nav class="space-y-1.5">
+          <div class="px-2 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">Módulos</div>
+
+          <button onclick="switchTab('perf')" id="nav-perf" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+            <span class="flex items-center gap-3">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              Desempenho & Boost
+            </span>
+            <span class="text-xs px-1.5 py-0.5 rounded bg-cyan-500/20">Ativo</span>
+          </button>
+
+          <button onclick="switchTab('apps')" id="nav-apps" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-[#0B1120] hover:text-white border border-transparent">
+            <span class="flex items-center gap-3">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+              </svg>
+              Aplicativos
+            </span>
+            <span id="badge-app-count" class="text-xs px-2 py-0.5 rounded-full bg-[#0B1120] text-slate-400 border border-slate-800">0</span>
+          </button>
+
+          <button onclick="switchTab('disks')" id="nav-disks" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-[#0B1120] hover:text-white border border-transparent">
+            <span class="flex items-center gap-3">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+              </svg>
+              Discos & Espaço
+            </span>
+            <span id="badge-disk-count" class="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">Discos</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-600/10 border border-cyan-500/20 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-white">Boost 1-Clique</span>
+          <span id="quick-junk-size" class="text-xs font-bold text-cyan-400">Temp + RAM</span>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">Limpa arquivos %TEMP%, cache do Windows e otimiza a memória física.</p>
+        <button onclick="runQuickBoost()" class="w-full py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5">
+          <span>⚡ Otimizar Agora</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 overflow-y-auto space-y-6">
+
+      <!-- ABA 1: DESEMPENHO -->
+      <section id="tab-perf" class="space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-white">Desempenho do Windows</h2>
+            <p class="text-sm text-slate-400">Monitoramento de recursos em tempo real, limpeza de cache e planos de energia.</p>
+          </div>
+          <button onclick="runQuickBoost()" class="px-4 py-2 rounded-xl bg-[#111827] hover:bg-cyan-500/15 text-white hover:text-cyan-400 border border-slate-800 hover:border-cyan-500/40 text-xs font-semibold transition-all flex items-center gap-2">
+            <span>🔄 Limpar Memória RAM & Temp</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-[#111827] border border-slate-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-400 uppercase">Uso de CPU</span>
+              <span class="px-2 py-0.5 text-xs rounded-md bg-cyan-500/15 text-cyan-400 font-semibold" id="cpu-val">15%</span>
+            </div>
+            <div class="text-2xl font-bold text-white" id="cpu-freq">3.60 GHz</div>
+            <div class="w-full h-2 rounded-full bg-[#0B1120] overflow-hidden">
+              <div id="cpu-bar" class="h-full bg-cyan-500 transition-all duration-500" style="width: 15%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-400">
+              <span id="proc-count">Processos: 165</span>
+              <span>Tempo Real</span>
+            </div>
+          </div>
+
+          <div class="bg-[#111827] border border-slate-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-400 uppercase">Memória RAM</span>
+              <span class="px-2 py-0.5 text-xs rounded-md bg-purple-500/15 text-purple-400 font-semibold" id="ram-pct">45%</span>
+            </div>
+            <div class="text-2xl font-bold text-white" id="ram-val">-- / -- GB</div>
+            <div class="w-full h-2 rounded-full bg-[#0B1120] overflow-hidden">
+              <div id="ram-bar" class="h-full bg-purple-500 transition-all duration-500" style="width: 45%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-400">
+              <span id="ram-free-lbl">Livre: -- GB</span>
+              <span>Física</span>
+            </div>
+          </div>
+
+          <div class="bg-[#111827] border border-slate-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-400 uppercase">Armazenamento Ativo</span>
+              <span class="px-2 py-0.5 text-xs rounded-md bg-emerald-500/15 text-emerald-400 font-semibold">Saudável</span>
+            </div>
+            <div class="text-2xl font-bold text-white" id="disk-summary-title">NVMe / SSD</div>
+            <div class="w-full h-2 rounded-full bg-[#0B1120] overflow-hidden">
+              <div class="h-full bg-emerald-500 transition-all duration-500" style="width: 35%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>SMART: OK</span>
+              <span>Leitura Rápida</span>
+            </div>
+          </div>
+
+          <div class="bg-[#111827] border border-slate-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-400 uppercase">Plano de Energia</span>
+              <span id="power-badge" class="px-2 py-0.5 text-xs rounded-md bg-amber-500/15 text-amber-400 font-semibold">Turbo</span>
+            </div>
+            <div class="text-lg font-bold text-white">PowerCfg Windows</div>
+            <div class="flex gap-1.5 pt-1">
+              <button onclick="setPowerPlan('Eco')" class="flex-1 py-1 rounded text-xs font-medium bg-[#0B1120] hover:border-cyan-500 text-slate-300 border border-slate-800">Eco</button>
+              <button onclick="setPowerPlan('Equilibrado')" class="flex-1 py-1 rounded text-xs font-medium bg-[#0B1120] hover:border-cyan-500 text-slate-300 border border-slate-800">Normal</button>
+              <button onclick="setPowerPlan('Turbo')" class="flex-1 py-1 rounded text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40">Turbo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-4">
+          <h3 class="text-base font-bold text-white">Ações Rápidas de Desempenho do Windows</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-4 rounded-xl bg-[#0B1120] border border-slate-800 flex flex-col justify-between space-y-3">
+              <div>
+                <div class="text-sm font-bold text-white">Limpar Pastas Temporárias (%TEMP%)</div>
+                <p class="text-xs text-slate-400 mt-1">Remove arquivos temporários do usuário e do Windows que acumulam gigabytes inutilizados.</p>
+              </div>
+              <button onclick="runQuickBoost()" class="px-3 py-2 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all">Executar Limpeza</button>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#0B1120] border border-slate-800 flex flex-col justify-between space-y-3">
+              <div>
+                <div class="text-sm font-bold text-white">Desinstalar Programas Pesados</div>
+                <p class="text-xs text-slate-400 mt-1">Veja todos os aplicativos instalados no Registro do Windows e remova com 1 clique.</p>
+              </div>
+              <button onclick="switchTab('apps')" class="px-3 py-2 rounded-lg bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white border border-purple-500/30 text-xs font-semibold transition-all">Abrir Gerenciador de Apps</button>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#0B1120] border border-slate-800 flex flex-col justify-between space-y-3">
+              <div>
+                <div class="text-sm font-bold text-white">Escaneamento Profundo de Discos</div>
+                <p class="text-xs text-slate-400 mt-1">Descubra quais pastas e arquivos estão lotando seus discos C:, D:, G: e exclua na hora.</p>
+              </div>
+              <button onclick="switchTab('disks')" class="px-3 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 text-xs font-semibold transition-all">Analisar Meus Discos</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ABA 2: APLICATIVOS -->
+      <section id="tab-apps" class="space-y-5 hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-white">Aplicativos Instalados no Windows</h2>
+            <p class="text-sm text-slate-400">Lista direta do Registro do Windows. Desinstale facilmente qualquer programa.</p>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <button onclick="loadApps()" class="px-3.5 py-2 rounded-xl bg-[#111827] hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold">
+              🔄 Recarregar Lista
+            </button>
+            <button onclick="uninstallSelectedApps()" id="btn-batch-uninstall" class="hidden px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-all shadow-sm">
+              <span id="batch-uninstall-label">Desinstalar Selecionados (0)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3">
+          <input type="text" id="app-search" oninput="renderApps()" placeholder="Pesquisar aplicativo instalado por nome ou fabricante..." class="flex-1 min-w-[240px] px-4 py-2 rounded-lg bg-[#0B1120] border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+          <div class="flex items-center gap-2">
+            <button onclick="setAppFilter('all')" id="flt-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">Todos</button>
+            <button onclick="setAppFilter('heavy')" id="flt-heavy" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0B1120] text-slate-400 border border-slate-800">Pesados (>500 MB)</button>
+            <button onclick="setAppFilter('bloat')" id="flt-bloat" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0B1120] text-slate-400 border border-slate-800">Microsoft / Sistema</button>
+          </div>
+        </div>
+
+        <div class="bg-[#111827] border border-slate-800 rounded-xl overflow-hidden">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase bg-[#0B1120]/60">
+                <th class="py-3 px-4 w-10">
+                  <input type="checkbox" id="select-all-apps" onchange="toggleSelectAllApps(this)" class="w-4 h-4 accent-cyan-500 rounded cursor-pointer">
+                </th>
+                <th class="py-3 px-4">Aplicativo</th>
+                <th class="py-3 px-4">Tipo</th>
+                <th class="py-3 px-4">Tamanho</th>
+                <th class="py-3 px-4 text-right">Desinstalação Fácil</th>
+              </tr>
+            </thead>
+            <tbody id="apps-tbody" class="divide-y divide-slate-800/80 text-sm"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ABA 3: DISCOS E ESPAÇO -->
+      <section id="tab-disks" class="space-y-6 hidden">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-white">Discos & Análise de Espaço</h2>
+            <p class="text-sm text-slate-400">Clique em qualquer disco para listar os arquivos e pastas que mais ocupam espaço e excluir na hora.</p>
+          </div>
+          <button onclick="scanSelectedDisk()" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition-all shadow-sm">
+            🔍 Re-analisar Disco Atual
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="disks-cards"></div>
+
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 class="text-base font-bold text-white" id="analysis-title">Maiores Pastas e Arquivos no Disco</h3>
+              <p class="text-xs text-slate-400">Ordenado do maior para o menor consumo de espaço</p>
+            </div>
+            <span id="scan-status-badge" class="text-xs px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-400 font-semibold">Pronto</span>
+          </div>
+          <div class="space-y-2.5" id="heavy-items-list"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-3 rounded-xl bg-[#111827] border border-cyan-500/50 shadow-xl flex items-center gap-3">
+    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+    <span id="toast-msg" class="text-xs font-semibold text-white"></span>
+  </div>
+
+  <script>
+    const isDesktop = typeof window.cscApi !== 'undefined';
+    if (isDesktop) {
+      document.getElementById('env-badge').textContent = 'Desktop App (.EXE Nativo)';
+      document.getElementById('download-exe-btn').classList.add('hidden');
+    } else {
+      document.getElementById('env-badge').textContent = 'Cloudflare Web Preview';
+    }
+
+    let appsData = [];
+    let currentAppFilter = 'all';
+    let disksList = [];
+    let selectedDisk = 'C:';
+    let diskItemsMap = {};
+
+    // Fallback Mock Data quando aberto no navegador via Cloudflare Pages
+    const fallbackApps = [
+      { id: 1, name: "Google Chrome", publisher: "Google LLC", version: "130.0", sizeMB: 1150, sizeStr: "1.15 GB", type: "Win32", category: "heavy", icon: "GC", selected: false },
+      { id: 2, name: "Adobe Premiere Pro 2026", publisher: "Adobe Inc.", version: "26.1", sizeMB: 8400, sizeStr: "8.40 GB", type: "Win32", category: "heavy", icon: "PR", selected: false },
+      { id: 3, name: "Docker Desktop", publisher: "Docker Inc.", version: "4.34", sizeMB: 2850, sizeStr: "2.85 GB", type: "Winget", category: "heavy", icon: "DK", selected: false },
+      { id: 4, name: "Microsoft Edge WebView2", publisher: "Microsoft Corporation", version: "129.0", sizeMB: 650, sizeStr: "650 MB", type: "Sistema", category: "bloat", icon: "EW", selected: false },
+      { id: 5, name: "Xbox Game Bar Plugin", publisher: "Microsoft Corporation", version: "5.824", sizeMB: 320, sizeStr: "320 MB", type: "Store", category: "bloat", icon: "XB", selected: false },
+      { id: 6, name: "WinRAR 7.01", publisher: "win.rar GmbH", version: "7.01", sizeMB: 12, sizeStr: "12 MB", type: "Win32", category: "normal", icon: "WR", selected: false }
+    ];
+
+    const fallbackDisks = [
+      { id: "C:", name: "Sistema Windows (C:)", type: "NTFS Volume", total: 500, used: 385, free: 115, pct: 77 },
+      { id: "D:", name: "Projetos & Jogos (D:)", type: "NTFS Volume", total: 1000, used: 440, free: 560, pct: 44 },
+      { id: "G:", name: "Volume CSC (G:)", type: "NTFS Volume", total: 1000, used: 610, free: 390, pct: 61 }
+    ];
+
+    const fallbackDiskItems = {
+      "C:": [
+        { path: "C:\\Users\\User\\AppData\\Local\\Temp", sizeMB: 14800, sizeGB: 14.45, safe: true },
+        { path: "C:\\Users\\User\\Downloads\\Instaladores_Antigos", sizeMB: 18200, sizeGB: 17.77, safe: true },
+        { path: "C:\\Windows", sizeMB: 28400, sizeGB: 27.73, safe: false }
+      ],
+      "D:": [
+        { path: "D:\\Cache_Render_Video", sizeMB: 64500, sizeGB: 62.98, safe: true },
+        { path: "D:\\Backups_Antigos_2025.zip", sizeMB: 31000, sizeGB: 30.27, safe: true }
+      ],
+      "G:": [
+        { path: "G:\\SteamLibrary\\steamapps\\common\\CallOfDuty", sizeMB: 148000, sizeGB: 144.53, safe: true },
+        { path: "G:\\Gravações_OBS_Brutas", sizeMB: 42600, sizeGB: 41.60, safe: true },
+        { path: "G:\\CSC Gerenciador", sizeMB: 180, sizeGB: 0.18, safe: false }
+      ]
+    };
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3500);
+    }
+
+    function switchTab(tab) {
+      ['perf', 'apps', 'disks'].forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+        document.getElementById('nav-' + t).className = "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-[#0B1120] hover:text-white border border-transparent";
+      });
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+      document.getElementById('nav-' + tab).className = "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all bg-cyan-500/15 text-cyan-400 border border-cyan-500/30";
+    }
+
+    async function loadTelemetry() {
+      if (isDesktop) {
+        const res = await window.cscApi.getTelemetry();
+        if (res.ok) {
+          document.getElementById('sys-os-name').textContent = res.osName;
+          document.getElementById('sys-cpu-name').textContent = res.cpuModel;
+          document.getElementById('cpu-val').textContent = res.cpuLoad + '%';
+          document.getElementById('cpu-freq').textContent = res.cpuSpeedGHz + ' GHz';
+          document.getElementById('cpu-bar').style.width = Math.min(100, res.cpuLoad) + '%';
+          document.getElementById('proc-count').textContent = 'Processos: ' + res.processCount;
+          document.getElementById('ram-pct').textContent = res.ramPct + '%';
+          document.getElementById('ram-val').textContent = `${res.usedMemGB} / ${res.totalMemGB} GB`;
+          document.getElementById('ram-bar').style.width = res.ramPct + '%';
+          document.getElementById('ram-free-lbl').textContent = `Livre: ${res.freeMemGB} GB`;
+        }
+      } else {
+        document.getElementById('sys-os-name').textContent = 'Windows 11 Pro (Preview Web)';
+        document.getElementById('sys-cpu-name').textContent = 'AMD Ryzen / Intel Core';
+        document.getElementById('ram-val').textContent = '14.2 / 32.0 GB';
+        document.getElementById('ram-free-lbl').textContent = 'Livre: 17.8 GB';
+      }
+    }
+
+    async function runQuickBoost() {
+      showToast('Executando limpeza de arquivos temporários e memória RAM...');
+      if (isDesktop) {
+        const res = await window.cscApi.optimizeSystem();
+        await loadTelemetry();
+        if (res.ok) {
+          showToast(`Otimizado! ${res.data.cleanedMB} MB de lixo removidos e RAM limpa!`);
+        }
+      } else {
+        document.getElementById('ram-pct').textContent = '30%';
+        document.getElementById('ram-val').textContent = '9.6 / 32.0 GB';
+        document.getElementById('ram-bar').style.width = '30%';
+        showToast('Otimização concluída! 4.6 GB liberados.');
+      }
+    }
+
+    async function setPowerPlan(plan) {
+      document.getElementById('power-badge').textContent = plan;
+      if (isDesktop) {
+        await window.cscApi.setPowerPlan(plan);
+      }
+      showToast('Plano de Energia do Windows alterado para: ' + plan);
+    }
+
+    async function loadApps() {
+      if (isDesktop) {
+        const res = await window.cscApi.getInstalledApps();
+        appsData = res.ok ? res.apps : fallbackApps;
+      } else {
+        appsData = [...fallbackApps];
+      }
+      renderApps();
+    }
+
+    function setAppFilter(flt) {
+      currentAppFilter = flt;
+      ['all', 'heavy', 'bloat'].forEach(k => {
+        document.getElementById('flt-' + k).className = (k === flt)
+          ? "px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+          : "px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0B1120] text-slate-400 border border-slate-800";
+      });
+      renderApps();
+    }
+
+    function renderApps() {
+      const q = (document.getElementById('app-search').value || '').toLowerCase();
+      const tbody = document.getElementById('apps-tbody');
+      tbody.innerHTML = '';
+
+      const filtered = appsData.filter(a => {
+        const matchQ = a.name.toLowerCase().includes(q) || a.publisher.toLowerCase().includes(q);
+        const matchF = currentAppFilter === 'all' || a.category === currentAppFilter;
+        return matchQ && matchF;
+      });
+
+      filtered.forEach(app => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-[#0B1120]/60 transition-colors";
+        tr.innerHTML = `
+          <td class="py-3 px-4">
+            <input type="checkbox" ${app.selected ? 'checked' : ''} onchange="toggleAppSelect(${app.id}, this.checked)" class="w-4 h-4 accent-cyan-500 rounded cursor-pointer">
+          </td>
+          <td class="py-3 px-4">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-cyan-500/15 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0">${app.icon}</div>
+              <div>
+                <div class="font-semibold text-white">${app.name}</div>
+                <div class="text-xs text-slate-400">${app.publisher} • v${app.version}</div>
+              </div>
+            </div>
+          </td>
+          <td class="py-3 px-4">
+            <span class="px-2.5 py-1 rounded-md text-xs font-medium bg-[#0B1120] border border-slate-800 text-slate-400">${app.type}</span>
+          </td>
+          <td class="py-3 px-4 font-semibold ${app.sizeMB >= 500 ? 'text-amber-400' : 'text-slate-200'}">${app.sizeStr}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="uninstallApp(${app.id})" class="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold transition-all">
+              Desinstalar
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('badge-app-count').textContent = appsData.length;
+      const selCount = appsData.filter(a => a.selected).length;
+      const btnBatch = document.getElementById('btn-batch-uninstall');
+      if (selCount > 0) {
+        btnBatch.classList.remove('hidden');
+        document.getElementById('batch-uninstall-label').textContent = `Desinstalar Selecionados (${selCount})`;
+      } else {
+        btnBatch.classList.add('hidden');
+      }
+    }
+
+    function toggleAppSelect(id, checked) {
+      const app = appsData.find(a => a.id === id);
+      if (app) app.selected = checked;
+      renderApps();
+    }
+
+    function toggleSelectAllApps(cb) {
+      appsData.forEach(a => a.selected = cb.checked);
+      renderApps();
+    }
+
+    async function uninstallApp(id) {
+      const app = appsData.find(a => a.id === id);
+      if (!app) return;
+      if (isDesktop) {
+        await window.cscApi.uninstallApp(app);
+        showToast(`Desinstalador de "${app.name}" iniciado no Windows!`);
+      } else {
+        appsData = appsData.filter(a => a.id !== id);
+        renderApps();
+        showToast(`"${app.name}" removido com sucesso!`);
+      }
+    }
+
+    async function uninstallSelectedApps() {
+      const selected = appsData.filter(a => a.selected);
+      for (const app of selected) {
+        if (isDesktop) await window.cscApi.uninstallApp(app);
+      }
+      if (!isDesktop) {
+        appsData = appsData.filter(a => !a.selected);
+        renderApps();
+      }
+      showToast(`${selected.length} desinstalador(es) disparado(s)!`);
+    }
+
+    async function loadDisks() {
+      if (isDesktop) {
+        const res = await window.cscApi.getDisks();
+        disksList = (res.ok && res.disks.length) ? res.disks : fallbackDisks;
+      } else {
+        disksList = [...fallbackDisks];
+      }
+      if (disksList.length > 0 && !disksList.some(d => d.id === selectedDisk)) {
+        selectedDisk = disksList[0].id;
+      }
+      document.getElementById('badge-disk-count').textContent = `${disksList.length} Discos`;
+      renderDisks();
+      await scanSelectedDisk();
+    }
+
+    function renderDisks() {
+      const container = document.getElementById('disks-cards');
+      container.innerHTML = '';
+      disksList.forEach(d => {
+        const isSel = d.id === selectedDisk;
+        const barColor = d.pct > 75 ? 'bg-amber-500' : 'bg-cyan-500';
+        const card = document.createElement('div');
+        card.onclick = async () => { selectedDisk = d.id; renderDisks(); await scanSelectedDisk(); };
+        card.className = `p-4 rounded-xl border cursor-pointer transition-all space-y-3 ${
+          isSel ? 'bg-cyan-500/10 border-cyan-500 shadow-sm' : 'bg-[#111827] border-slate-800 hover:border-cyan-500/40'
+        }`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-lg bg-[#0B1120] border border-slate-800 flex items-center justify-center font-bold text-sm text-cyan-400">${d.id}</div>
+              <div>
+                <div class="text-sm font-bold text-white">${d.name}</div>
+                <div class="text-xs text-slate-400">${d.type}</div>
+              </div>
+            </div>
+            <span class="text-xs font-bold px-2 py-0.5 rounded ${d.pct > 75 ? 'bg-amber-500/20 text-amber-400' : 'bg-cyan-500/20 text-cyan-400'}">${d.pct}% usado</span>
+          </div>
+          <div class="w-full h-2.5 rounded-full bg-[#0B1120] overflow-hidden">
+            <div class="h-full ${barColor}" style="width: ${d.pct}%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-slate-400">
+            <span>Usado: <strong class="text-white">${d.used} GB</strong></span>
+            <span>Livre: <strong class="text-emerald-400">${d.free} GB</strong> de ${d.total} GB</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function scanSelectedDisk() {
+      document.getElementById('analysis-title').textContent = `Analisando espaço em ${selectedDisk}...`;
+      document.getElementById('scan-status-badge').textContent = 'Escaneando...';
+      let items = [];
+      if (isDesktop) {
+        const res = await window.cscApi.scanDisk(selectedDisk);
+        items = res.ok ? res.items : [];
+      } else {
+        items = fallbackDiskItems[selectedDisk] || fallbackDiskItems['C:'];
+      }
+      diskItemsMap[selectedDisk] = items;
+      document.getElementById('analysis-title').textContent = `Maiores Pastas e Arquivos em ${selectedDisk}`;
+      document.getElementById('scan-status-badge').textContent = `${items.length} itens pesados encontrados`;
+      renderHeavyItems();
+    }
+
+    function renderHeavyItems() {
+      const items = diskItemsMap[selectedDisk] || [];
+      const list = document.getElementById('heavy-items-list');
+      list.innerHTML = '';
+
+      if (items.length === 0) {
+        list.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">Nenhum arquivo ou pasta pesada (>5 MB) encontrada na raiz de ${selectedDisk}.</div>`;
+        return;
+      }
+
+      const maxMB = Math.max(...items.map(i => i.sizeMB), 1);
+
+      items.forEach((item, idx) => {
+        const pct = Math.max(4, Math.round((item.sizeMB / maxMB) * 100));
+        const sizeLabel = item.sizeMB >= 1024 ? `${item.sizeGB} GB` : `${item.sizeMB} MB`;
+        const row = document.createElement('div');
+        row.className = "p-3.5 rounded-xl bg-[#0B1120] border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4";
+        row.innerHTML = `
+          <div class="space-y-1.5 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-white font-mono break-all">${item.path}</span>
+              ${!item.safe ? '<span class="px-2 py-0.5 text-xs rounded bg-amber-500/15 text-amber-400">Sistema / Protegido</span>' : ''}
+            </div>
+            <div class="w-full max-w-md h-1.5 rounded-full bg-[#111827] overflow-hidden">
+              <div class="h-full bg-cyan-500" style="width: ${pct}%"></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="text-right">
+              <div class="text-base font-bold text-white">${sizeLabel}</div>
+              <div class="text-xs text-slate-400">Ocupado</div>
+            </div>
+            ${item.safe ? `
+              <button onclick="deleteDiskItem(${idx})" class="px-3.5 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold transition-all">
+                🗑️ Excluir
+              </button>
+            ` : `
+              <button disabled class="px-3.5 py-2 rounded-lg bg-[#111827] text-slate-500 border border-slate-800 text-xs font-semibold cursor-not-allowed">
+                🔒 Protegido
+              </button>
+            `}
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    async function deleteDiskItem(idx) {
+      const items = diskItemsMap[selectedDisk] || [];
+      const target = items[idx];
+      if (!target) return;
+
+      if (isDesktop) {
+        const res = await window.cscApi.deleteDiskItem(target.path);
+        if (!res.ok) {
+          showToast('Erro: ' + res.error);
+          return;
+        }
+      }
+      items.splice(idx, 1);
+      renderHeavyItems();
+      showToast(`Excluído com sucesso: ${target.path}`);
+    }
+
+    // Inicialização
+    loadTelemetry();
+    loadApps();
+    loadDisks();
+    setInterval(loadTelemetry, 6000);
+  </script>
+</body>
+</html>

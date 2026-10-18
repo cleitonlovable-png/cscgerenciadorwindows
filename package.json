@@ -1,0 +1,38 @@
+{
+  "name": "csc-gerenciador",
+  "version": "1.0.0",
+  "description": "CSC Gerenciador — Suite de Desempenho, Aplicativos e Análise de Disco para Windows",
+  "main": "src/main.js",
+  "author": "CSC Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cleitonlovable-png/cscgerenciadorwindows.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build:exe": "electron-builder --win portable",
+    "deploy:cf": "npx wrangler pages deploy src/renderer --project-name cscgerenciadorwindows"
+  },
+  "build": {
+    "appId": "com.csc.gerenciador",
+    "productName": "CSC Gerenciador",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "CSC-Gerenciador-Portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  }
+}
