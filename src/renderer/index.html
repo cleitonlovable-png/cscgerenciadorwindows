@@ -564,7 +564,7 @@
 
     async function uninstallApp(id) {
       const app = appsData.find(a => a.id === id);
-      if (!app || app.uninstallState) return;
+      if (!app || app.uninstallState === 'uninstalling' || app.uninstallState === 'done') return;
 
       app.uninstallState = 'uninstalling';
       app.uninstallProgress = 12;
@@ -572,23 +572,33 @@
       renderApps();
 
       const progressTimer = setInterval(() => {
-        if (app.uninstallState === 'uninstalling' && app.uninstallProgress < 92) {
-          app.uninstallProgress = Math.min(92, app.uninstallProgress + Math.floor(Math.random() * 18) + 10);
+        if (app.uninstallState === 'uninstalling' && app.uninstallProgress < 90) {
+          app.uninstallProgress = Math.min(90, app.uninstallProgress + Math.floor(Math.random() * 14) + 6);
           renderApps();
         }
-      }, 280);
+      }, 350);
 
+      let reallyRemoved = true;
       if (isDesktop) {
-        await window.cscApi.uninstallApp(app);
+        const res = await window.cscApi.uninstallApp(app);
+        reallyRemoved = Boolean(res && res.ok && res.removed);
       } else {
         await new Promise(r => setTimeout(r, 1700));
       }
 
       clearInterval(progressTimer);
-      app.uninstallProgress = 100;
-      app.uninstallState = 'done';
-      renderApps();
-      showToast(`"${app.name}" — Desinstalado com sucesso!`);
+
+      if (reallyRemoved) {
+        app.uninstallProgress = 100;
+        app.uninstallState = 'done';
+        renderApps();
+        showToast(`"${app.name}" — Desinstalado com sucesso!`);
+      } else {
+        app.uninstallProgress = 0;
+        app.uninstallState = null;
+        renderApps();
+        showToast(`Desinstalação de "${app.name}" não foi concluída ou foi cancelada na janela do desinstalador.`);
+      }
     }
 
     async function uninstallSelectedApps() {

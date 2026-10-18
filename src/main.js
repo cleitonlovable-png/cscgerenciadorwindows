@@ -245,7 +245,7 @@ ipcMain.handle('get-installed-apps', async () => {
       );
       $apps = Get-ItemProperty $paths -ErrorAction SilentlyContinue |
         Where-Object { $_.DisplayName -and $_.UninstallString -and -not $_.SystemComponent } |
-        Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, EstimatedSize, UninstallString, QuietUninstallString |
+        Select-Object DisplayName, PSChildName, PSParentPath, DisplayVersion, Publisher, InstallDate, EstimatedSize, UninstallString, QuietUninstallString |
         Sort-Object DisplayName -Unique;
       $apps | ConvertTo-Json -Compress -Depth 2
     `;
@@ -265,6 +265,7 @@ ipcMain.handle('get-installed-apps', async () => {
       return {
         id: idx + 1,
         name,
+        regKeyName: item.PSChildName || '',
         publisher: item.Publisher || 'Desconhecido',
         version: item.DisplayVersion || '1.0',
         sizeMB,
@@ -272,7 +273,8 @@ ipcMain.handle('get-installed-apps', async () => {
         date: item.InstallDate || 'Instalado',
         type: item.QuietUninstallString ? 'Silencioso / Win32' : 'Win32',
         category: sizeMB >= 500 ? 'heavy' : (String(item.Publisher || '').includes('Microsoft') ? 'bloat' : 'normal'),
-        uninstallCmd: item.QuietUninstallString || item.UninstallString || '',
+        uninstallCmd: item.UninstallString || '',
+        quietUninstallCmd: item.QuietUninstallString || '',
         icon
       };
     });
@@ -285,17 +287,69 @@ ipcMain.handle('get-installed-apps', async () => {
 
 ipcMain.handle('uninstall-app', async (_event, appObj) => {
   try {
-    if (!appObj || !appObj.uninstallCmd) {
+    if (!appObj || (!appObj.uninstallCmd && !appObj.quietUninstallCmd)) {
       return { ok: false, error: 'Comando de desinstalação não encontrado.' };
     }
-    await new Promise((resolve) => {
-      const child = exec(appObj.uninstallCmd, () => resolve());
-      // Caso o desinstalador abra em background e finalize, resolve ao fechar
-      child.on('exit', () => resolve());
-      // Timeout de segurança caso o instalador pendure processo filho
-      setTimeout(() => resolve(), 25000);
-    });
-    return { ok: true };
+
+    const rawCmd = String(appObj.quietUninstallCmd || appObj.uninstallCmd).trim();
+    const safeName = String(appObj.name || '').replace(/'/g, "''");
+
+    const ps = `
+      $ErrorActionPreference = 'Continue';
+      $raw = '${rawCmd.replace(/'/g, "''")}';
+      $appName = '${safeName}';
+
+      # 1. Verifica se é pacote MSI (MsiExec.exe /I{GUID} ou /X{GUID})
+      if ($raw -match '(\\{[0-9A-Fa-f\\-]{36}\\})') {
+        $guid = $matches[1];
+        $proc = Start-Process -FilePath "msiexec.exe" -ArgumentList "/x $guid /qb! /norestart" -Wait -PassThru -Verb RunAs;
+      } else {
+        # 2. Separa o caminho do .exe dos argumentos mesmo quando nao tem aspas no Registro (ex: C:\\Program Files (x86)\\Adobe\\...\\Uninstaller.exe)
+        if ($raw.StartsWith('"')) {
+          $parts = $raw -split '"', 3;
+          $exePath = $parts[1];
+          $argsList = $parts[2].Trim();
+        } elseif ($raw -match '^([a-zA-Z]:\\\\[^"]*?\\.exe)\\s*(.*)$') {
+          $exePath = $matches[1];
+          $argsList = $matches[2].Trim();
+        } else {
+          $exePath = $raw;
+          $argsList = '';
+        }
+
+        if (Test-Path -LiteralPath $exePath) {
+          if ($argsList) {
+            Start-Process -FilePath $exePath -ArgumentList $argsList -Wait -Verb RunAs;
+          } else {
+            Start-Process -FilePath $exePath -Wait -Verb RunAs;
+          }
+        } else {
+          # Fallback via cmd /c com caminho entre aspas
+          Start-Process -FilePath "cmd.exe" -ArgumentList "/c \`"$raw\`"" -Wait -Verb RunAs;
+        }
+      }
+
+      # 3. Confere no Registro se o aplicativo realmente sumiu
+      Start-Sleep -Seconds 1;
+      $paths = @(
+        'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',
+        'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',
+        'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'
+      );
+      $stillThere = Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq $appName };
+
+      [PSCustomObject]@{
+        removed = (-not [bool]$stillThere);
+        stillInstalled = [bool]$stillThere
+      } | ConvertTo-Json -Compress
+    `;
+
+    const out = await runPowerShell(ps);
+    const result = JSON.parse(out || '{"removed":false}');
+    return {
+      ok: true,
+      removed: Boolean(result.removed)
+    };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
