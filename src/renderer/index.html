@@ -553,22 +553,37 @@
       notifications.forEach((n, idx) => {
         const item = document.createElement('div');
         item.className = "p-3 rounded-xl bg-[#0B1120] border border-slate-800 space-y-1.5 hover:border-cyan-500/40 transition-all";
-        item.innerHTML = `
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-white flex items-center gap-1.5">
-              <span>${n.icon || '📌'}</span> ${n.title}
-            </span>
-            <span class="text-[10px] text-slate-400">${n.time || 'Agora'}</span>
-          </div>
-          <p class="text-xs text-slate-300 leading-relaxed">${n.text}</p>
-          ${n.action ? `
-            <div class="pt-1">
-              <button onclick="${n.action}" class="w-full py-1.5 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-sm">
-                ${n.actionLabel || 'Ver Detalhes'}
-              </button>
-            </div>
-          ` : ''}
+        
+        const header = document.createElement('div');
+        header.className = "flex items-center justify-between";
+        header.innerHTML = `
+          <span class="text-xs font-bold text-white flex items-center gap-1.5">
+            <span>${n.icon || '📌'}</span> ${n.title}
+          </span>
+          <span class="text-[10px] text-slate-400">${n.time || 'Agora'}</span>
         `;
+        item.appendChild(header);
+
+        const body = document.createElement('p');
+        body.className = "text-xs text-slate-300 leading-relaxed";
+        body.textContent = n.text;
+        item.appendChild(body);
+
+        if (n.onActionClick) {
+          const btnWrap = document.createElement('div');
+          btnWrap.className = "pt-1";
+          const actionBtn = document.createElement('button');
+          actionBtn.className = "w-full py-1.5 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-sm";
+          actionBtn.textContent = n.actionLabel || 'Ver Detalhes';
+          actionBtn.onclick = (e) => {
+            e.stopPropagation();
+            document.getElementById('notif-popover').classList.add('hidden');
+            n.onActionClick();
+          };
+          btnWrap.appendChild(actionBtn);
+          item.appendChild(btnWrap);
+        }
+
         list.appendChild(item);
       });
     }
@@ -642,15 +657,18 @@
         }
 
         if (status.state === 'available') {
-          // Adiciona ao sino de notificação
+          // Remove notificações de atualização anteriores para não acumular
+          notifications = notifications.filter(n => !n.isUpdateNotif);
           addNotification({
+            isUpdateNotif: true,
             icon: '⚡',
             title: `Nova Atualização v${status.version}`,
-            text: `Uma nova versão está disponível com novidades. Clique abaixo para ver o changelog e confirmar a instalação.`,
-            action: `openUpdateModal(${JSON.stringify(status)})`,
+            text: `Uma nova versão está disponível. Clique para ver o changelog e confirmar a instalação.`,
+            onActionClick: () => openUpdateModal(status),
             actionLabel: 'Ver Mudanças e Atualizar'
           });
           showToast(`Nova versão v${status.version} disponível no sino de notificações!`);
+          openUpdateModal(status);
         } else if (status.state === 'downloading') {
           const wrap = document.getElementById('update-download-progress-wrap');
           if (wrap && !wrap.classList.contains('hidden')) {
@@ -664,11 +682,13 @@
             confirmBtn.innerHTML = `<span>🔄 Reiniciar e Aplicar v${status.version}</span>`;
             confirmBtn.onclick = () => window.cscApi.installUpdateNow();
           }
+          notifications = notifications.filter(n => !n.isUpdateNotif);
           addNotification({
+            isUpdateNotif: true,
             icon: '✅',
             title: `Download Concluído (v${status.version})`,
             text: 'Arquivos prontos! Clique para reiniciar o aplicativo e aplicar as alterações.',
-            action: 'window.cscApi.installUpdateNow()',
+            onActionClick: () => window.cscApi.installUpdateNow(),
             actionLabel: 'Reiniciar e Aplicar Agora'
           });
           showToast(`Download da v${status.version} concluído! Pronto para reiniciar.`);
