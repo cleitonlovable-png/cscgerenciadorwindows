@@ -160,10 +160,20 @@ ipcMain.handle('get-telemetry', async () => {
       $cpu = (Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average;
       $procs = (Get-Process).Count;
       $os = (Get-CimInstance Win32_OperatingSystem).Caption;
+      $activeSchemeLine = (powercfg /getactivescheme);
+      $powerPlan = "Turbo";
+      if ($activeSchemeLine -match "381b4222-f694-41f0-9685-ff5bb260df2e" -or $activeSchemeLine -match "Equilibrado|Balanced") {
+        $powerPlan = "Equilibrado";
+      } elseif ($activeSchemeLine -match "a1841308-3541-4fab-bc81-f71556f20b4a" -or $activeSchemeLine -match "Economia|Power saver|Eco") {
+        $powerPlan = "Eco";
+      } else {
+        $powerPlan = "Turbo";
+      }
       [PSCustomObject]@{
         cpuLoad = [int]$cpu;
         processCount = [int]$procs;
-        osName = [string]$os
+        osName = [string]$os;
+        currentPowerPlan = [string]$powerPlan
       } | ConvertTo-Json -Compress
     `;
     const out = await runPowerShell(ps);
@@ -179,7 +189,8 @@ ipcMain.handle('get-telemetry', async () => {
       totalMemGB,
       usedMemGB,
       freeMemGB,
-      ramPct
+      ramPct,
+      currentPowerPlan: parsed.currentPowerPlan || 'Turbo'
     };
   } catch (err) {
     return { ok: false, error: String(err) };
