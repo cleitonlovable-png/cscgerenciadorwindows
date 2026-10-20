@@ -105,6 +105,13 @@
         </svg>
       </button>
 
+      <!-- Botão Atualizar (Recarregar Dados e Verificar Atualizações) -->
+      <button id="top-refresh-btn" onclick="handleTopRefresh()" class="p-2 rounded-xl bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 hover:border-cyan-500/40 transition-all flex items-center justify-center relative group" title="Recarregar Dados e Verificar Atualizações">
+        <svg id="top-refresh-icon" class="w-4 h-4 transition-transform duration-500 group-hover:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+      </button>
+
       <!-- Botão Sino de Notificação -->
       <div class="relative">
         <button id="notif-bell-btn" onclick="toggleNotifPanel()" class="p-2 rounded-xl bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 hover:border-cyan-500/40 transition-all flex items-center justify-center relative" title="Notificações e Atualizações">
@@ -529,6 +536,30 @@
     }
 
     initTheme();
+
+    // Ação do Botão Atualizar do Topo
+    async function handleTopRefresh() {
+      const icon = document.getElementById('top-refresh-icon');
+      if (icon) icon.classList.add('animate-spin');
+      showToast('Atualizando dados do sistema e verificando novas versões...');
+
+      try {
+        await Promise.all([
+          loadTelemetry(),
+          loadDisks(),
+          manualCheckUpdates()
+        ]);
+        if (typeof renderAITokens === 'function') {
+          renderAITokens();
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setTimeout(() => {
+          if (icon) icon.classList.remove('animate-spin');
+        }, 800);
+      }
+    }
 
     // Gerenciador de Notificações e Atualizações
     let notifications = [];
