@@ -495,3 +495,360 @@ ipcMain.handle('open-in-explorer', async (_event, targetPath) => {
   shell.showItemInFolder(targetPath);
   return { ok: true };
 });
+
+// ==========================================
+// 6. AI CONSUMPTION & API KEYS IPC HANDLERS
+// ==========================================
+function getAIConfigFile() {
+  const userData = app.getPath('userData');
+  if (!fs.existsSync(userData)) {
+    fs.mkdirSync(userData, { recursive: true });
+  }
+  return path.join(userData, 'ai_keys.json');
+}
+
+ipcMain.handle('load-ai-keys', async () => {
+  try {
+    const filePath = getAIConfigFile();
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf8');
+      return { ok: true, keys: JSON.parse(data) };
+    }
+    return { ok: true, keys: {} };
+  } catch (err) {
+    return { ok: false, error: String(err), keys: {} };
+  }
+});
+
+ipcMain.handle('save-ai-keys', async (_event, keys) => {
+  try {
+    const filePath = getAIConfigFile();
+    fs.writeFileSync(filePath, JSON.stringify(keys, null, 2), 'utf8');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('fetch-ai-usage', async (_event, providedKeys) => {
+  let keys = providedKeys;
+  if (!keys) {
+    try {
+      const filePath = getAIConfigFile();
+      if (fs.existsSync(filePath)) {
+        keys = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      }
+    } catch (_) {}
+  }
+  keys = keys || {};
+
+  const results = [];
+
+  // 1. Antigravity (Google DeepMind)
+  const antigravityKey = keys.antigravity || keys.gemini;
+  if (!antigravityKey) {
+    results.push({
+      id: 'antigravity',
+      name: 'Antigravity',
+      company: 'Google DeepMind',
+      icon: '🌌',
+      colorClass: 'text-cyan-400',
+      strokeColor: '#22d3ee',
+      configured: false,
+      usedTokens: 0,
+      maxTokens: 0,
+      pct: 0,
+      status: 'Não configurado'
+    });
+  } else {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${antigravityKey}`);
+      if (res.ok) {
+        results.push({
+          id: 'antigravity',
+          name: 'Antigravity',
+          company: 'Google DeepMind',
+          icon: '🌌',
+          colorClass: 'text-cyan-400',
+          strokeColor: '#22d3ee',
+          configured: true,
+          usedTokens: 0,
+          maxTokens: 1000000,
+          pct: 0,
+          status: 'Online • API Conectada'
+        });
+      } else {
+        results.push({
+          id: 'antigravity',
+          name: 'Antigravity',
+          company: 'Google DeepMind',
+          icon: '🌌',
+          colorClass: 'text-rose-400',
+          strokeColor: '#f43f5e',
+          configured: true,
+          error: true,
+          usedTokens: 0,
+          maxTokens: 0,
+          pct: 0,
+          status: res.status === 400 || res.status === 403 ? 'Chave Inválida' : `Erro API (${res.status})`
+        });
+      }
+    } catch (e) {
+      results.push({
+        id: 'antigravity',
+        name: 'Antigravity',
+        company: 'Google DeepMind',
+        icon: '🌌',
+        colorClass: 'text-rose-400',
+        strokeColor: '#f43f5e',
+        configured: true,
+        error: true,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Falha de conexão'
+      });
+    }
+  }
+
+  // 2. Claude 3.7 / 3.5 (Anthropic)
+  if (!keys.claude) {
+    results.push({
+      id: 'claude',
+      name: 'Claude 3.7 / 3.5',
+      company: 'Anthropic',
+      icon: '🎭',
+      colorClass: 'text-amber-400',
+      strokeColor: '#fbbf24',
+      configured: false,
+      usedTokens: 0,
+      maxTokens: 0,
+      pct: 0,
+      status: 'Não configurado'
+    });
+  } else {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/models', {
+        headers: {
+          'x-api-key': keys.claude,
+          'anthropic-version': '2023-06-01'
+        }
+      });
+      if (res.ok) {
+        const limitStr = res.headers.get('anthropic-ratelimit-tokens-limit');
+        const remainingStr = res.headers.get('anthropic-ratelimit-tokens-remaining');
+        let used = 0;
+        let limit = 200000;
+        let pct = 0;
+
+        if (limitStr && remainingStr) {
+          limit = parseInt(limitStr, 10);
+          const remaining = parseInt(remainingStr, 10);
+          used = Math.max(0, limit - remaining);
+          pct = limit > 0 ? Math.round((used / limit) * 100) : 0;
+        }
+
+        results.push({
+          id: 'claude',
+          name: 'Claude 3.7 / 3.5',
+          company: 'Anthropic',
+          icon: '🎭',
+          colorClass: 'text-amber-400',
+          strokeColor: '#fbbf24',
+          configured: true,
+          usedTokens: used,
+          maxTokens: limit,
+          pct: pct,
+          status: 'Online • Conectado'
+        });
+      } else {
+        results.push({
+          id: 'claude',
+          name: 'Claude 3.7 / 3.5',
+          company: 'Anthropic',
+          icon: '🎭',
+          colorClass: 'text-rose-400',
+          strokeColor: '#f43f5e',
+          configured: true,
+          error: true,
+          usedTokens: 0,
+          maxTokens: 0,
+          pct: 0,
+          status: res.status === 401 ? 'Chave Inválida (401)' : `Erro (${res.status})`
+        });
+      }
+    } catch (e) {
+      results.push({
+        id: 'claude',
+        name: 'Claude 3.7 / 3.5',
+        company: 'Anthropic',
+        icon: '🎭',
+        colorClass: 'text-rose-400',
+        strokeColor: '#f43f5e',
+        configured: true,
+        error: true,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Falha de conexão'
+      });
+    }
+  }
+
+  // 3. OpenAI Codex / GPT-4
+  if (!keys.openai) {
+    results.push({
+      id: 'codex',
+      name: 'OpenAI Codex',
+      company: 'OpenAI',
+      icon: '⚡',
+      colorClass: 'text-emerald-400',
+      strokeColor: '#34d399',
+      configured: false,
+      usedTokens: 0,
+      maxTokens: 0,
+      pct: 0,
+      status: 'Não configurado'
+    });
+  } else {
+    try {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${keys.openai}`
+        }
+      });
+      if (res.ok) {
+        let used = 0;
+        let max = 200000;
+        let pct = 0;
+        try {
+          const startOfDay = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+          const usageRes = await fetch(`https://api.openai.com/v1/organization/usage/completions?start_time=${startOfDay}`, {
+            headers: { 'Authorization': `Bearer ${keys.openai}` }
+          });
+          if (usageRes.ok) {
+            const usageData = await usageRes.json();
+            if (usageData && Array.isArray(usageData.data)) {
+              usageData.data.forEach(bucket => {
+                used += (bucket.input_tokens || 0) + (bucket.output_tokens || 0);
+              });
+              pct = Math.min(100, Math.round((used / max) * 100));
+            }
+          }
+        } catch (_) {}
+
+        results.push({
+          id: 'codex',
+          name: 'OpenAI Codex',
+          company: 'OpenAI',
+          icon: '⚡',
+          colorClass: 'text-emerald-400',
+          strokeColor: '#34d399',
+          configured: true,
+          usedTokens: used,
+          maxTokens: max,
+          pct: pct,
+          status: 'Online • Conectado'
+        });
+      } else {
+        results.push({
+          id: 'codex',
+          name: 'OpenAI Codex',
+          company: 'OpenAI',
+          icon: '⚡',
+          colorClass: 'text-rose-400',
+          strokeColor: '#f43f5e',
+          configured: true,
+          error: true,
+          usedTokens: 0,
+          maxTokens: 0,
+          pct: 0,
+          status: res.status === 401 ? 'Chave Inválida (401)' : `Erro (${res.status})`
+        });
+      }
+    } catch (e) {
+      results.push({
+        id: 'codex',
+        name: 'OpenAI Codex',
+        company: 'OpenAI',
+        icon: '⚡',
+        colorClass: 'text-rose-400',
+        strokeColor: '#f43f5e',
+        configured: true,
+        error: true,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Falha de conexão'
+      });
+    }
+  }
+
+  // 4. Gemini Pro (Google AI)
+  if (!keys.gemini) {
+    results.push({
+      id: 'gemini',
+      name: 'Gemini Pro',
+      company: 'Google AI',
+      icon: '✨',
+      colorClass: 'text-purple-400',
+      strokeColor: '#c084fc',
+      configured: false,
+      usedTokens: 0,
+      maxTokens: 0,
+      pct: 0,
+      status: 'Não configurado'
+    });
+  } else {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${keys.gemini}`);
+      if (res.ok) {
+        results.push({
+          id: 'gemini',
+          name: 'Gemini Pro',
+          company: 'Google AI',
+          icon: '✨',
+          colorClass: 'text-purple-400',
+          strokeColor: '#c084fc',
+          configured: true,
+          usedTokens: 0,
+          maxTokens: 1000000,
+          pct: 0,
+          status: 'Online • API Conectada'
+        });
+      } else {
+        results.push({
+          id: 'gemini',
+          name: 'Gemini Pro',
+          company: 'Google AI',
+          icon: '✨',
+          colorClass: 'text-rose-400',
+          strokeColor: '#f43f5e',
+          configured: true,
+          error: true,
+          usedTokens: 0,
+          maxTokens: 0,
+          pct: 0,
+          status: res.status === 400 || res.status === 403 ? 'Chave Inválida' : `Erro (${res.status})`
+        });
+      }
+    } catch (e) {
+      results.push({
+        id: 'gemini',
+        name: 'Gemini Pro',
+        company: 'Google AI',
+        icon: '✨',
+        colorClass: 'text-rose-400',
+        strokeColor: '#f43f5e',
+        configured: true,
+        error: true,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Falha de conexão'
+      });
+    }
+  }
+
+  return { ok: true, data: results };
+});

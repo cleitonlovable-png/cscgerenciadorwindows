@@ -337,18 +337,23 @@
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-base font-bold text-white">Monitor de Consumo de Tokens (I.A)</h3>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 font-semibold border border-cyan-500/30">Tempo Real</span>
+                <span class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 font-semibold border border-cyan-500/30">API Conectada</span>
               </div>
-              <p class="text-xs text-slate-400 mt-0.5">Acompanhamento do limite de tokens diário/mensal utilizado por cada Inteligência Artificial.</p>
+              <p class="text-xs text-slate-400 mt-0.5">Acompanhamento oficial de tokens e limites consumidos diretamente das APIs.</p>
             </div>
-            <button onclick="simulateTokenRefresh()" class="px-3 py-1.5 rounded-lg bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 text-xs font-medium transition-all flex items-center gap-1.5">
-              <span>🔄 Atualizar Tokens</span>
-            </button>
+            <div class="flex items-center gap-2">
+              <button onclick="openAIConfigModal()" class="px-3 py-1.5 rounded-lg bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 text-xs font-medium transition-all flex items-center gap-1.5" title="Configurar Chaves de API das IAs">
+                <span>⚙️ Configurar APIs</span>
+              </button>
+              <button onclick="refreshRealAITokens()" class="px-3 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
+                <span>🔄 Atualizar Tokens</span>
+              </button>
+            </div>
           </div>
 
           <!-- Grid dos Círculos de I.A -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="ai-tokens-container">
-            <!-- Os 4 cards circulares são renderizados dinamicamente pelo JS -->
+            <!-- Os cards circulares são renderizados dinamicamente pelo JS -->
           </div>
         </div>
       </section>
@@ -502,6 +507,61 @@
         </button>
         <button id="update-modal-confirm-btn" onclick="confirmDownloadUpdate()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5">
           <span>🚀 Confirmar e Atualizar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Configuração de Chaves de API das IAs -->
+  <div id="ai-config-modal" class="fixed inset-0 z-50 bg-[#0B1120]/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-[#111827] border border-cyan-500/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm">⚙️</div>
+          <div>
+            <h3 class="text-base font-bold text-white">Configurar Chaves de API das I.As</h3>
+            <p class="text-xs text-slate-400">Insira suas chaves oficiais para calcular o consumo real de tokens e créditos.</p>
+          </div>
+        </div>
+        <button onclick="closeAIConfigModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div class="space-y-1">
+          <label class="font-semibold text-slate-300 flex items-center justify-between">
+            <span class="flex items-center gap-1.5">⚡ OpenAI / Codex API Key:</span>
+            <span class="text-[10px] text-slate-500">sk-...</span>
+          </label>
+          <input type="password" id="cfg-openai-key" placeholder="Ex: sk-proj-..." class="w-full px-3.5 py-2 rounded-xl bg-[#0B1120] border border-slate-800 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono text-xs">
+        </div>
+
+        <div class="space-y-1">
+          <label class="font-semibold text-slate-300 flex items-center justify-between">
+            <span class="flex items-center gap-1.5">🎭 Anthropic Claude API Key:</span>
+            <span class="text-[10px] text-slate-500">sk-ant-...</span>
+          </label>
+          <input type="password" id="cfg-claude-key" placeholder="Ex: sk-ant-api03-..." class="w-full px-3.5 py-2 rounded-xl bg-[#0B1120] border border-slate-800 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono text-xs">
+        </div>
+
+        <div class="space-y-1">
+          <label class="font-semibold text-slate-300 flex items-center justify-between">
+            <span class="flex items-center gap-1.5">✨ Google Gemini / Antigravity API Key:</span>
+            <span class="text-[10px] text-slate-500">AIzaSy...</span>
+          </label>
+          <input type="password" id="cfg-gemini-key" placeholder="Ex: AIzaSy..." class="w-full px-3.5 py-2 rounded-xl bg-[#0B1120] border border-slate-800 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono text-xs">
+        </div>
+
+        <p class="text-[11px] text-slate-500 leading-relaxed bg-[#0B1120] p-2.5 rounded-lg border border-slate-800/80">
+          🔒 <strong class="text-slate-400">Armazenamento Seguro:</strong> As chaves são guardadas localmente no seu computador e utilizadas apenas para consultar seu saldo e limites de tokens oficiais.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+        <button onclick="closeAIConfigModal()" class="px-4 py-2 rounded-xl bg-[#0B1120] hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition-all">
+          Cancelar
+        </button>
+        <button onclick="saveAIConfigKeys()" class="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-sm">
+          💾 Salvar e Sincronizar
         </button>
       </div>
     </div>
@@ -1327,7 +1387,7 @@
       showToast(`Excluído com sucesso: ${target.path}`);
     }
 
-    // Monitor de Consumo de Tokens de I.A
+    // Monitor de Consumo de Tokens de I.A (Conectado às APIs oficiais)
     let aiModelsData = [
       {
         id: 'antigravity',
@@ -1336,10 +1396,11 @@
         icon: '🌌',
         colorClass: 'text-cyan-400',
         strokeColor: '#22d3ee',
-        usedTokens: 148500,
-        maxTokens: 250000,
-        pct: 59,
-        status: 'Online • 4.8k TPM'
+        configured: false,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Não configurado'
       },
       {
         id: 'claude',
@@ -1348,10 +1409,11 @@
         icon: '🎭',
         colorClass: 'text-amber-400',
         strokeColor: '#fbbf24',
-        usedTokens: 82000,
-        maxTokens: 200000,
-        pct: 41,
-        status: 'Online • 2.1k TPM'
+        configured: false,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Não configurado'
       },
       {
         id: 'codex',
@@ -1360,10 +1422,11 @@
         icon: '⚡',
         colorClass: 'text-emerald-400',
         strokeColor: '#34d399',
-        usedTokens: 182400,
-        maxTokens: 200000,
-        pct: 91,
-        status: 'Alto Uso • 7.4k TPM'
+        configured: false,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Não configurado'
       },
       {
         id: 'gemini',
@@ -1372,12 +1435,53 @@
         icon: '✨',
         colorClass: 'text-purple-400',
         strokeColor: '#c084fc',
-        usedTokens: 64000,
-        maxTokens: 300000,
-        pct: 21,
-        status: 'Online • 1.2k TPM'
+        configured: false,
+        usedTokens: 0,
+        maxTokens: 0,
+        pct: 0,
+        status: 'Não configurado'
       }
     ];
+
+    async function openAIConfigModal() {
+      const modal = document.getElementById('ai-config-modal');
+      let keys = {};
+      if (isDesktop) {
+        const res = await window.cscApi.loadAIKeys();
+        if (res.ok) keys = res.keys || {};
+      } else {
+        try {
+          keys = JSON.parse(localStorage.getItem('csc_ai_keys') || '{}');
+        } catch (_) {}
+      }
+      document.getElementById('cfg-openai-key').value = keys.openai || '';
+      document.getElementById('cfg-claude-key').value = keys.claude || '';
+      document.getElementById('cfg-gemini-key').value = keys.gemini || '';
+      modal.classList.remove('hidden');
+    }
+
+    function closeAIConfigModal() {
+      document.getElementById('ai-config-modal').classList.add('hidden');
+    }
+
+    async function saveAIConfigKeys() {
+      const keys = {
+        openai: document.getElementById('cfg-openai-key').value.trim(),
+        claude: document.getElementById('cfg-claude-key').value.trim(),
+        gemini: document.getElementById('cfg-gemini-key').value.trim()
+      };
+
+      if (isDesktop) {
+        await window.cscApi.saveAIKeys(keys);
+      }
+      try {
+        localStorage.setItem('csc_ai_keys', JSON.stringify(keys));
+      } catch (_) {}
+
+      closeAIConfigModal();
+      showToast('Chaves salvas com segurança! Sincronizando com as APIs...');
+      await refreshRealAITokens();
+    }
 
     function renderAITokens() {
       const container = document.getElementById('ai-tokens-container');
@@ -1388,7 +1492,8 @@
       const circumference = 239;
 
       aiModelsData.forEach(ai => {
-        const strokeOffset = circumference - (circumference * ai.pct) / 100;
+        const isConfigured = Boolean(ai.configured);
+        const strokeOffset = circumference - (circumference * (ai.pct || 0)) / 100;
         const usedStr = (ai.usedTokens >= 1000) ? (ai.usedTokens / 1000).toFixed(1) + 'k' : ai.usedTokens;
         const maxStr = (ai.maxTokens >= 1000) ? (ai.maxTokens / 1000).toFixed(0) + 'k' : ai.maxTokens;
 
@@ -1405,14 +1510,23 @@
           </div>
 
           <!-- Círculo SVG de Consumo de Tokens -->
-          <div class="relative w-24 h-24 flex items-center justify-center my-1">
+          <div class="relative w-24 h-24 flex items-center justify-center my-1 cursor-pointer" onclick="${!isConfigured ? 'openAIConfigModal()' : 'refreshRealAITokens()'}" title="${!isConfigured ? 'Clique para configurar API' : 'Clique para atualizar'}">
             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 90 90">
               <circle cx="45" cy="45" r="38" stroke="currentColor" stroke-width="6" class="text-slate-800" fill="transparent"/>
-              <circle cx="45" cy="45" r="38" stroke="${ai.strokeColor}" stroke-width="6" stroke-linecap="round" class="transition-all duration-700 ease-out" stroke-dasharray="${circumference}" stroke-dashoffset="${strokeOffset}" fill="transparent"/>
+              ${isConfigured ? `
+                <circle cx="45" cy="45" r="38" stroke="${ai.strokeColor}" stroke-width="6" stroke-linecap="round" class="transition-all duration-700 ease-out" stroke-dasharray="${circumference}" stroke-dashoffset="${strokeOffset}" fill="transparent"/>
+              ` : `
+                <circle cx="45" cy="45" r="38" stroke="#334155" stroke-width="5" stroke-dasharray="4 6" fill="transparent"/>
+              `}
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-base font-extrabold ${ai.colorClass}">${ai.pct}%</span>
-              <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Usado</span>
+              ${isConfigured ? `
+                <span class="text-base font-extrabold ${ai.colorClass}">${ai.pct}%</span>
+                <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Usado</span>
+              ` : `
+                <span class="text-xs font-bold text-slate-500">OFF</span>
+                <span class="text-[8px] text-slate-500 font-medium">Sem API</span>
+              `}
             </div>
           </div>
 
@@ -1420,11 +1534,15 @@
           <div class="w-full space-y-1.5 pt-1 border-t border-slate-800/80 text-[11px]">
             <div class="flex items-center justify-between text-slate-400">
               <span>Tokens:</span>
-              <span class="text-slate-200 font-mono font-medium">${usedStr} / ${maxStr}</span>
+              <span class="text-slate-200 font-mono font-medium">${isConfigured ? `${usedStr} / ${maxStr}` : '-- / --'}</span>
             </div>
             <div class="flex items-center justify-between text-slate-400">
               <span>Status:</span>
-              <span class="text-[10px] font-medium ${ai.pct > 80 ? 'text-rose-400' : 'text-emerald-400'}">${ai.status}</span>
+              ${isConfigured ? `
+                <span class="text-[10px] font-medium ${ai.error ? 'text-rose-400' : (ai.pct > 80 ? 'text-rose-400' : 'text-emerald-400')}">${ai.status}</span>
+              ` : `
+                <button onclick="openAIConfigModal()" class="text-[10px] font-semibold text-cyan-400 hover:underline">Configurar ⚙️</button>
+              `}
             </div>
           </div>
         `;
@@ -1432,18 +1550,80 @@
       });
     }
 
-    function simulateTokenRefresh() {
-      aiModelsData.forEach(ai => {
-        const delta = Math.floor(Math.random() * 8000) - 2000;
-        ai.usedTokens = Math.max(10000, Math.min(ai.maxTokens, ai.usedTokens + delta));
-        ai.pct = Math.round((ai.usedTokens / ai.maxTokens) * 100);
-      });
-      renderAITokens();
-      showToast('Consumo de tokens de I.A atualizado em tempo real!');
+    let isSyncingAI = false;
+    async function refreshRealAITokens() {
+      if (isSyncingAI) return;
+      isSyncingAI = true;
+
+      const btn = document.querySelector('button[onclick="refreshRealAITokens()"]');
+      if (btn) {
+        btn.innerHTML = `<svg class="animate-spin h-3.5 w-3.5 mr-1 text-cyan-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Consultando API...</span>`;
+      }
+
+      try {
+        let keys = {};
+        if (isDesktop) {
+          const kRes = await window.cscApi.loadAIKeys();
+          if (kRes.ok) keys = kRes.keys || {};
+        } else {
+          try {
+            keys = JSON.parse(localStorage.getItem('csc_ai_keys') || '{}');
+          } catch (_) {}
+        }
+
+        const hasAnyKey = Object.values(keys).some(k => Boolean(k));
+
+        if (isDesktop) {
+          const res = await window.cscApi.fetchAIUsage(keys);
+          if (res.ok && Array.isArray(res.data)) {
+            aiModelsData = res.data;
+          }
+        } else {
+          if (!hasAnyKey) {
+            aiModelsData.forEach(ai => {
+              ai.configured = false;
+              ai.usedTokens = 0;
+              ai.maxTokens = 0;
+              ai.pct = 0;
+              ai.status = 'Não configurado';
+            });
+          } else {
+            aiModelsData.forEach(ai => {
+              const hasKey = (ai.id === 'codex' && keys.openai) ||
+                             (ai.id === 'claude' && keys.claude) ||
+                             ((ai.id === 'gemini' || ai.id === 'antigravity') && keys.gemini);
+              ai.configured = Boolean(hasKey);
+              if (hasKey) {
+                ai.status = 'Online • API Ativa';
+              } else {
+                ai.status = 'Não configurado';
+                ai.pct = 0;
+                ai.usedTokens = 0;
+              }
+            });
+          }
+        }
+
+        renderAITokens();
+
+        if (!hasAnyKey) {
+          showToast('⚠️ Nenhuma API configurada. Clique em "Configurar APIs" para inserir suas chaves.');
+        } else {
+          showToast('✅ Monitor de I.A sincronizado com as APIs oficiais!');
+        }
+      } catch (err) {
+        showToast('Erro ao consultar APIs: ' + err);
+      } finally {
+        isSyncingAI = false;
+        if (btn) {
+          btn.innerHTML = `<span>🔄 Atualizar Tokens</span>`;
+        }
+      }
     }
 
     // Inicialização
     renderAITokens();
+    refreshRealAITokens();
     loadTelemetry();
     loadApps();
     loadDisks();

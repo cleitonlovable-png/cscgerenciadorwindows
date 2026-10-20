@@ -14,5 +14,8 @@ contextBridge.exposeInMainWorld('cscApi', {
   getDisks: () => ipcRenderer.invoke('get-disks'),
   scanDisk: (driveId) => ipcRenderer.invoke('scan-disk', driveId),
   deleteDiskItem: (targetPath) => ipcRenderer.invoke('delete-disk-item', targetPath),
-  openInExplorer: (targetPath) => ipcRenderer.invoke('open-in-explorer', targetPath)
+  openInExplorer: (targetPath) => ipcRenderer.invoke('open-in-explorer', targetPath),
+  saveAIKeys: (keys) => ipcRenderer.invoke('save-ai-keys', keys),
+  loadAIKeys: () => ipcRenderer.invoke('load-ai-keys'),
+  fetchAIUsage: (keys) => ipcRenderer.invoke('fetch-ai-usage', keys)
 });
