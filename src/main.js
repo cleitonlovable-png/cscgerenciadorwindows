@@ -530,6 +530,68 @@ ipcMain.handle('save-ai-keys', async (_event, keys) => {
   }
 });
 
+ipcMain.handle('get-ai-process-telemetry', async () => {
+  try {
+    const ps = `
+      $aiTargets = @(
+        @{ id = 'antigravity'; name = 'Antigravity'; patterns = @('Antigravity*') },
+        @{ id = 'codex'; name = 'OpenAI Codex'; patterns = @('codex*') },
+        @{ id = 'claude'; name = 'Claude'; patterns = @('Claude*') },
+        @{ id = 'gemini'; name = 'Google Gemini'; patterns = @('gemini*', 'google-genai*') }
+      )
+
+      $results = @()
+      foreach ($item in $aiTargets) {
+        $procs = @()
+        foreach ($pat in $item.patterns) {
+          $found = Get-Process -Name $pat -ErrorAction SilentlyContinue
+          if ($found) { $procs += $found }
+        }
+
+        if ($procs -and $procs.Count -gt 0) {
+          $count = $procs.Count
+          $memBytes = ($procs | Measure-Object -Property WorkingSet64 -Sum).Sum
+          $memMB = [math]::Round($memBytes / 1MB, 1)
+          $memGB = [math]::Round($memBytes / 1GB, 2)
+          $cpuSec = [math]::Round(($procs | Measure-Object -Property CPU -Sum).Sum, 1)
+          $pct = [math]::Min(100, [math]::Max(2, [math]::Round(($memMB / 2048) * 100)))
+
+          $results += [PSCustomObject]@{
+            id = $item.id
+            name = $item.name
+            running = $true
+            instances = $count
+            ramMB = $memMB
+            ramStr = if ($memMB -ge 1024) { "$memGB GB" } else { "$memMB MB" }
+            cpuSec = "$cpuSec s"
+            pct = $pct
+            status = "Online • $count processos"
+          }
+        } else {
+          $results += [PSCustomObject]@{
+            id = $item.id
+            name = $item.name
+            running = $false
+            instances = 0
+            ramMB = 0
+            ramStr = "0 MB"
+            cpuSec = "0s"
+            pct = 0
+            status = "Offline / Não iniciado"
+          }
+        }
+      }
+      $results | ConvertTo-Json -Compress
+    `;
+    const out = await runPowerShell(ps);
+    const parsed = JSON.parse(out || '[]');
+    const items = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+    return { ok: true, data: items };
+  } catch (err) {
+    return { ok: false, error: String(err), data: [] };
+  }
+});
+
 ipcMain.handle('fetch-ai-usage', async (_event, providedKeys) => {
   let keys = providedKeys;
   if (!keys) {

@@ -331,29 +331,26 @@
           </div>
         </div>
 
-        <!-- Seção: Consumo de Tokens das I.As -->
+        <!-- Seção: Monitor de Recursos de Hardware das I.As -->
         <div class="bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-4">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-base font-bold text-white">Monitor de Consumo de Tokens (I.A)</h3>
-                <span class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 font-semibold border border-cyan-500/30">API Conectada</span>
+                <h3 class="text-base font-bold text-white">Monitor de Recursos de I.A (CPU & Memória RAM)</h3>
+                <span class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 font-semibold border border-cyan-500/30">Processos em Tempo Real</span>
               </div>
-              <p class="text-xs text-slate-400 mt-0.5">Acompanhamento oficial de tokens e limites consumidos diretamente das APIs.</p>
+              <p class="text-xs text-slate-400 mt-0.5">Uso real de hardware e memória RAM consumida pelos processos de Inteligência Artificial no seu Windows.</p>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="openAIConfigModal()" class="px-3 py-1.5 rounded-lg bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 text-xs font-medium transition-all flex items-center gap-1.5" title="Configurar Chaves de API das IAs">
-                <span>⚙️ Configurar APIs</span>
-              </button>
-              <button onclick="refreshRealAITokens()" class="px-3 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5">
-                <span>🔄 Atualizar Tokens</span>
+              <button onclick="refreshAIProcessMetrics()" class="px-3.5 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm">
+                <span>🔄 Atualizar Métricas</span>
               </button>
             </div>
           </div>
 
           <!-- Grid dos Círculos de I.A -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="ai-tokens-container">
-            <!-- Os cards circulares são renderizados dinamicamente pelo JS -->
+            <!-- Os cards circulares de CPU & RAM são renderizados dinamicamente pelo JS -->
           </div>
         </div>
       </section>
@@ -1387,7 +1384,7 @@
       showToast(`Excluído com sucesso: ${target.path}`);
     }
 
-    // Monitor de Consumo de Tokens de I.A (Conectado às APIs oficiais)
+    // Monitor de Recursos de I.A (CPU & Memória RAM do Windows)
     let aiModelsData = [
       {
         id: 'antigravity',
@@ -1396,24 +1393,12 @@
         icon: '🌌',
         colorClass: 'text-cyan-400',
         strokeColor: '#22d3ee',
-        configured: false,
-        usedTokens: 0,
-        maxTokens: 0,
-        pct: 0,
-        status: 'Não configurado'
-      },
-      {
-        id: 'claude',
-        name: 'Claude 3.7 / 3.5',
-        company: 'Anthropic',
-        icon: '🎭',
-        colorClass: 'text-amber-400',
-        strokeColor: '#fbbf24',
-        configured: false,
-        usedTokens: 0,
-        maxTokens: 0,
-        pct: 0,
-        status: 'Não configurado'
+        running: true,
+        instances: 9,
+        ramStr: '762 MB',
+        cpuSec: '2545 s',
+        pct: 37,
+        status: 'Online • 9 processos'
       },
       {
         id: 'codex',
@@ -1422,85 +1407,58 @@
         icon: '⚡',
         colorClass: 'text-emerald-400',
         strokeColor: '#34d399',
-        configured: false,
-        usedTokens: 0,
-        maxTokens: 0,
-        pct: 0,
-        status: 'Não configurado'
+        running: true,
+        instances: 10,
+        ramStr: '878 MB',
+        cpuSec: '408 s',
+        pct: 43,
+        status: 'Online • 10 processos'
+      },
+      {
+        id: 'claude',
+        name: 'Claude',
+        company: 'Anthropic',
+        icon: '🎭',
+        colorClass: 'text-amber-400',
+        strokeColor: '#fbbf24',
+        running: true,
+        instances: 8,
+        ramStr: '775 MB',
+        cpuSec: '75 s',
+        pct: 38,
+        status: 'Online • 8 processos'
       },
       {
         id: 'gemini',
-        name: 'Gemini Pro',
+        name: 'Google Gemini',
         company: 'Google AI',
         icon: '✨',
         colorClass: 'text-purple-400',
         strokeColor: '#c084fc',
-        configured: false,
-        usedTokens: 0,
-        maxTokens: 0,
+        running: false,
+        instances: 0,
+        ramStr: '0 MB',
+        cpuSec: '0s',
         pct: 0,
-        status: 'Não configurado'
+        status: 'Offline / Não iniciado'
       }
     ];
 
-    async function openAIConfigModal() {
-      const modal = document.getElementById('ai-config-modal');
-      let keys = {};
-      if (isDesktop) {
-        const res = await window.cscApi.loadAIKeys();
-        if (res.ok) keys = res.keys || {};
-      } else {
-        try {
-          keys = JSON.parse(localStorage.getItem('csc_ai_keys') || '{}');
-        } catch (_) {}
-      }
-      document.getElementById('cfg-openai-key').value = keys.openai || '';
-      document.getElementById('cfg-claude-key').value = keys.claude || '';
-      document.getElementById('cfg-gemini-key').value = keys.gemini || '';
-      modal.classList.remove('hidden');
-    }
-
-    function closeAIConfigModal() {
-      document.getElementById('ai-config-modal').classList.add('hidden');
-    }
-
-    async function saveAIConfigKeys() {
-      const keys = {
-        openai: document.getElementById('cfg-openai-key').value.trim(),
-        claude: document.getElementById('cfg-claude-key').value.trim(),
-        gemini: document.getElementById('cfg-gemini-key').value.trim()
-      };
-
-      if (isDesktop) {
-        await window.cscApi.saveAIKeys(keys);
-      }
-      try {
-        localStorage.setItem('csc_ai_keys', JSON.stringify(keys));
-      } catch (_) {}
-
-      closeAIConfigModal();
-      showToast('Chaves salvas com segurança! Sincronizando com as APIs...');
-      await refreshRealAITokens();
-    }
-
-    function renderAITokens() {
+    function renderAIProcessCards() {
       const container = document.getElementById('ai-tokens-container');
       if (!container) return;
       container.innerHTML = '';
 
-      // Circunferência para raio r=38 (2 * PI * 38 ≈ 238.76)
       const circumference = 239;
 
       aiModelsData.forEach(ai => {
-        const isConfigured = Boolean(ai.configured);
+        const isRunning = Boolean(ai.running);
         const strokeOffset = circumference - (circumference * (ai.pct || 0)) / 100;
-        const usedStr = (ai.usedTokens >= 1000) ? (ai.usedTokens / 1000).toFixed(1) + 'k' : ai.usedTokens;
-        const maxStr = (ai.maxTokens >= 1000) ? (ai.maxTokens / 1000).toFixed(0) + 'k' : ai.maxTokens;
 
         const card = document.createElement('div');
-        card.className = "p-4 rounded-xl bg-[#0B1120] border border-slate-800 hover:border-slate-700 transition-all flex flex-col items-center text-center space-y-3 relative overflow-hidden group";
+        card.className = "p-4 rounded-xl bg-[#0B1120] border border-slate-800 hover:border-slate-700 transition-all flex flex-col items-center text-center space-y-3 relative overflow-hidden group shadow-sm";
         card.innerHTML = `
-          <!-- Header do card com ícone e nome -->
+          <!-- Header do card -->
           <div class="flex items-center gap-2">
             <span class="text-base">${ai.icon}</span>
             <div class="text-left">
@@ -1509,40 +1467,40 @@
             </div>
           </div>
 
-          <!-- Círculo SVG de Consumo de Tokens -->
-          <div class="relative w-24 h-24 flex items-center justify-center my-1 cursor-pointer" onclick="${!isConfigured ? 'openAIConfigModal()' : 'refreshRealAITokens()'}" title="${!isConfigured ? 'Clique para configurar API' : 'Clique para atualizar'}">
+          <!-- Círculo SVG de Uso de Memória RAM -->
+          <div class="relative w-24 h-24 flex items-center justify-center my-1 cursor-pointer" onclick="refreshAIProcessMetrics()" title="Clique para atualizar métricas">
             <svg class="w-full h-full transform -rotate-90" viewBox="0 0 90 90">
               <circle cx="45" cy="45" r="38" stroke="currentColor" stroke-width="6" class="text-slate-800" fill="transparent"/>
-              ${isConfigured ? `
+              ${isRunning ? `
                 <circle cx="45" cy="45" r="38" stroke="${ai.strokeColor}" stroke-width="6" stroke-linecap="round" class="transition-all duration-700 ease-out" stroke-dasharray="${circumference}" stroke-dashoffset="${strokeOffset}" fill="transparent"/>
               ` : `
-                <circle cx="45" cy="45" r="38" stroke="#334155" stroke-width="5" stroke-dasharray="4 6" fill="transparent"/>
+                <circle cx="45" cy="45" r="38" stroke="#334155" stroke-width="4" stroke-dasharray="4 6" fill="transparent"/>
               `}
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
-              ${isConfigured ? `
-                <span class="text-base font-extrabold ${ai.colorClass}">${ai.pct}%</span>
-                <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Usado</span>
+              ${isRunning ? `
+                <span class="text-sm font-extrabold ${ai.colorClass} tracking-tight">${ai.ramStr}</span>
+                <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">RAM PC</span>
               ` : `
                 <span class="text-xs font-bold text-slate-500">OFF</span>
-                <span class="text-[8px] text-slate-500 font-medium">Sem API</span>
+                <span class="text-[8px] text-slate-500 font-medium">Inativo</span>
               `}
             </div>
           </div>
 
-          <!-- Estatísticas de Tokens e Status -->
+          <!-- Estatísticas de Hardware e Processos -->
           <div class="w-full space-y-1.5 pt-1 border-t border-slate-800/80 text-[11px]">
             <div class="flex items-center justify-between text-slate-400">
-              <span>Tokens:</span>
-              <span class="text-slate-200 font-mono font-medium">${isConfigured ? `${usedStr} / ${maxStr}` : '-- / --'}</span>
+              <span>CPU Total:</span>
+              <span class="text-slate-200 font-mono font-medium">${ai.cpuSec || '0s'}</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400">
+              <span>Instâncias:</span>
+              <span class="text-slate-200 font-medium">${ai.instances} proc</span>
             </div>
             <div class="flex items-center justify-between text-slate-400">
               <span>Status:</span>
-              ${isConfigured ? `
-                <span class="text-[10px] font-medium ${ai.error ? 'text-rose-400' : (ai.pct > 80 ? 'text-rose-400' : 'text-emerald-400')}">${ai.status}</span>
-              ` : `
-                <button onclick="openAIConfigModal()" class="text-[10px] font-semibold text-cyan-400 hover:underline">Configurar ⚙️</button>
-              `}
+              <span class="text-[10px] font-medium ${isRunning ? 'text-emerald-400' : 'text-slate-500'}">${ai.status}</span>
             </div>
           </div>
         `;
@@ -1551,83 +1509,64 @@
     }
 
     let isSyncingAI = false;
-    async function refreshRealAITokens() {
+    async function refreshAIProcessMetrics() {
       if (isSyncingAI) return;
       isSyncingAI = true;
 
-      const btn = document.querySelector('button[onclick="refreshRealAITokens()"]');
+      const btn = document.querySelector('button[onclick="refreshAIProcessMetrics()"]');
       if (btn) {
-        btn.innerHTML = `<svg class="animate-spin h-3.5 w-3.5 mr-1 text-cyan-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Consultando API...</span>`;
+        btn.innerHTML = `<svg class="animate-spin h-3.5 w-3.5 mr-1 text-cyan-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Lendo Windows...</span>`;
       }
 
       try {
-        let keys = {};
-        if (isDesktop) {
-          const kRes = await window.cscApi.loadAIKeys();
-          if (kRes.ok) keys = kRes.keys || {};
-        } else {
-          try {
-            keys = JSON.parse(localStorage.getItem('csc_ai_keys') || '{}');
-          } catch (_) {}
-        }
-
-        const hasAnyKey = Object.values(keys).some(k => Boolean(k));
-
-        if (isDesktop) {
-          const res = await window.cscApi.fetchAIUsage(keys);
-          if (res.ok && Array.isArray(res.data)) {
-            aiModelsData = res.data;
-          }
-        } else {
-          if (!hasAnyKey) {
-            aiModelsData.forEach(ai => {
-              ai.configured = false;
-              ai.usedTokens = 0;
-              ai.maxTokens = 0;
-              ai.pct = 0;
-              ai.status = 'Não configurado';
-            });
-          } else {
-            aiModelsData.forEach(ai => {
-              const hasKey = (ai.id === 'codex' && keys.openai) ||
-                             (ai.id === 'claude' && keys.claude) ||
-                             ((ai.id === 'gemini' || ai.id === 'antigravity') && keys.gemini);
-              ai.configured = Boolean(hasKey);
-              if (hasKey) {
-                ai.status = 'Online • API Ativa';
+        if (isDesktop && window.cscApi?.getAIProcessTelemetry) {
+          const res = await window.cscApi.getAIProcessTelemetry();
+          if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+            res.data.forEach(item => {
+              if (item.id === 'antigravity') {
+                item.icon = '🌌';
+                item.company = 'Google DeepMind';
+                item.colorClass = 'text-cyan-400';
+                item.strokeColor = '#22d3ee';
+              } else if (item.id === 'codex') {
+                item.icon = '⚡';
+                item.company = 'OpenAI';
+                item.colorClass = 'text-emerald-400';
+                item.strokeColor = '#34d399';
+              } else if (item.id === 'claude') {
+                item.icon = '🎭';
+                item.company = 'Anthropic';
+                item.colorClass = 'text-amber-400';
+                item.strokeColor = '#fbbf24';
               } else {
-                ai.status = 'Não configurado';
-                ai.pct = 0;
-                ai.usedTokens = 0;
+                item.icon = '✨';
+                item.company = 'Google AI';
+                item.colorClass = 'text-purple-400';
+                item.strokeColor = '#c084fc';
               }
             });
+            aiModelsData = res.data;
           }
         }
-
-        renderAITokens();
-
-        if (!hasAnyKey) {
-          showToast('⚠️ Nenhuma API configurada. Clique em "Configurar APIs" para inserir suas chaves.');
-        } else {
-          showToast('✅ Monitor de I.A sincronizado com as APIs oficiais!');
-        }
+        renderAIProcessCards();
       } catch (err) {
-        showToast('Erro ao consultar APIs: ' + err);
+        console.error('Erro ao ler processos de IA:', err);
       } finally {
         isSyncingAI = false;
         if (btn) {
-          btn.innerHTML = `<span>🔄 Atualizar Tokens</span>`;
+          btn.innerHTML = `<span>🔄 Atualizar Métricas</span>`;
         }
       }
     }
 
     // Inicialização
-    renderAITokens();
-    refreshRealAITokens();
+    renderAIProcessCards();
+    refreshAIProcessMetrics();
     loadTelemetry();
     loadApps();
     loadDisks();
     setInterval(loadTelemetry, 6000);
+    setInterval(refreshAIProcessMetrics, 8000);
   </script>
 </body>
 </html>
