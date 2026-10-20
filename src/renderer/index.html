@@ -8,14 +8,53 @@
     :root {
       --background: #0B1120;
       --card: #111827;
+      --card-inner: #0B1120;
       --border: #1E293B;
       --foreground: #F8FAFC;
       --muted-foreground: #94A3B8;
+    }
+    html.light {
+      --background: #F1F5F9;
+      --card: #FFFFFF;
+      --card-inner: #F8FAFC;
+      --border: #E2E8F0;
+      --foreground: #0F172A;
+      --muted-foreground: #64748B;
     }
     body {
       background-color: var(--background);
       color: var(--foreground);
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+    html.light body {
+      background-color: #F1F5F9;
+      color: #0F172A;
+    }
+    html.light header,
+    html.light aside,
+    html.light .bg-\[\#111827\] {
+      background-color: #FFFFFF !important;
+      border-color: #E2E8F0 !important;
+    }
+    html.light .bg-\[\#0B1120\] {
+      background-color: #F8FAFC !important;
+      border-color: #E2E8F0 !important;
+    }
+    html.light .text-white {
+      color: #0F172A !important;
+    }
+    html.light .text-slate-400,
+    html.light .text-slate-300,
+    html.light .text-slate-200 {
+      color: #64748B !important;
+    }
+    html.light .border-slate-800,
+    html.light .border-slate-700 {
+      border-color: #E2E8F0 !important;
+    }
+    html.light .divide-slate-800\/80 > :not([hidden]) ~ :not([hidden]) {
+      border-color: #E2E8F0 !important;
     }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -53,6 +92,42 @@
         </svg>
         <span>Baixar Instalador Auto-Update (.EXE)</span>
       </a>
+
+      <!-- Botão Alternador de Tema Claro / Escuro (Lua / Sol) -->
+      <button id="theme-toggle-btn" onclick="toggleTheme()" class="p-2 rounded-xl bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 hover:border-cyan-500/40 transition-all flex items-center justify-center relative" title="Alternar Modo Escuro / Claro">
+        <!-- Ícone da Lua (Dark Mode Ativo) -->
+        <svg id="theme-moon-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+        <!-- Ícone do Sol (Light Mode Ativo) -->
+        <svg id="theme-sun-icon" class="w-4 h-4 hidden text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+      </button>
+
+      <!-- Botão Sino de Notificação -->
+      <div class="relative">
+        <button id="notif-bell-btn" onclick="toggleNotifPanel()" class="p-2 rounded-xl bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 hover:border-cyan-500/40 transition-all flex items-center justify-center relative" title="Notificações e Atualizações">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          <!-- Badge indicador de nova atualização pendente -->
+          <span id="notif-badge-dot" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full border-2 border-[#111827] hidden animate-pulse"></span>
+        </button>
+
+        <!-- Dropdown / Popover de Notificações -->
+        <div id="notif-popover" class="absolute right-0 mt-2 w-80 bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl p-4 hidden z-50 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <span>🔔</span> Notificações
+            </span>
+            <span id="notif-count-text" class="text-[11px] text-slate-400">0 novas</span>
+          </div>
+          <div id="notif-list" class="space-y-2 max-h-72 overflow-y-auto">
+            <div id="notif-empty" class="text-xs text-slate-400 text-center py-4">Nenhuma notificação no momento.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -337,7 +412,197 @@
     </div>
   </div>
 
+  <!-- Modal de Confirmação de Atualização com Changelog / Release Notes -->
+  <div id="update-modal" class="fixed inset-0 z-50 bg-[#0B1120]/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-[#111827] border border-cyan-500/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm">⚡</div>
+          <div>
+            <h3 class="text-base font-bold text-white">Nova Atualização Disponível</h3>
+            <p id="update-modal-ver" class="text-xs text-cyan-400 font-semibold">Versão v1.0.6</p>
+          </div>
+        </div>
+        <button onclick="closeUpdateModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+
+      <div class="space-y-2">
+        <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider">O que há de novo nesta versão:</span>
+        <div id="update-modal-notes" class="p-3.5 rounded-xl bg-[#0B1120] border border-slate-800 text-xs text-slate-300 space-y-1.5 max-h-48 overflow-y-auto font-mono whitespace-pre-wrap leading-relaxed">
+          <!-- Notas inseridas dinamicamente -->
+        </div>
+      </div>
+
+      <!-- Barra de Progresso do Download se o usuário iniciar -->
+      <div id="update-download-progress-wrap" class="space-y-1.5 hidden">
+        <div class="flex justify-between text-xs">
+          <span id="update-download-status-lbl" class="text-slate-400">Baixando arquivos...</span>
+          <span id="update-download-pct-lbl" class="font-bold text-cyan-400">0%</span>
+        </div>
+        <div class="w-full h-2 rounded-full bg-[#0B1120] overflow-hidden border border-slate-800">
+          <div id="update-download-bar" class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-200 w-0"></div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button id="update-modal-cancel-btn" onclick="closeUpdateModal()" class="px-4 py-2 rounded-xl bg-[#0B1120] hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition-all">
+          Lembrar Mais Tarde
+        </button>
+        <button id="update-modal-confirm-btn" onclick="confirmDownloadUpdate()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5">
+          <span>🚀 Confirmar e Atualizar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // Gerenciador de Tema (Claro / Escuro)
+    function initTheme() {
+      const savedTheme = localStorage.getItem('csc-theme') || 'dark';
+      applyTheme(savedTheme);
+    }
+
+    function toggleTheme() {
+      const isLight = document.documentElement.classList.contains('light');
+      applyTheme(isLight ? 'dark' : 'light');
+    }
+
+    function applyTheme(theme) {
+      const moon = document.getElementById('theme-moon-icon');
+      const sun = document.getElementById('theme-sun-icon');
+      if (theme === 'light') {
+        document.documentElement.classList.add('light');
+        if (moon) moon.classList.add('hidden');
+        if (sun) sun.classList.remove('hidden');
+        localStorage.setItem('csc-theme', 'light');
+      } else {
+        document.documentElement.classList.remove('light');
+        if (sun) sun.classList.add('hidden');
+        if (moon) moon.classList.remove('hidden');
+        localStorage.setItem('csc-theme', 'dark');
+      }
+    }
+
+    initTheme();
+
+    // Gerenciador de Notificações e Atualizações
+    let notifications = [];
+    let pendingUpdateInfo = null;
+
+    function toggleNotifPanel() {
+      const p = document.getElementById('notif-popover');
+      p.classList.toggle('hidden');
+    }
+
+    // Fecha dropdown se clicar fora
+    document.addEventListener('click', (e) => {
+      const btn = document.getElementById('notif-bell-btn');
+      const p = document.getElementById('notif-popover');
+      if (btn && p && !btn.contains(e.target) && !p.contains(e.target)) {
+        p.classList.add('hidden');
+      }
+    });
+
+    function addNotification(notif) {
+      notifications.unshift(notif);
+      renderNotifications();
+    }
+
+    function renderNotifications() {
+      const list = document.getElementById('notif-list');
+      const badge = document.getElementById('notif-badge-dot');
+      const countText = document.getElementById('notif-count-text');
+
+      if (!list) return;
+      list.innerHTML = '';
+
+      if (notifications.length === 0) {
+        list.innerHTML = '<div class="text-xs text-slate-400 text-center py-4">Nenhuma notificação no momento.</div>';
+        if (badge) badge.classList.add('hidden');
+        if (countText) countText.textContent = '0 novas';
+        return;
+      }
+
+      if (badge) badge.classList.remove('hidden');
+      if (countText) countText.textContent = `${notifications.length} nova(s)`;
+
+      notifications.forEach((n, idx) => {
+        const item = document.createElement('div');
+        item.className = "p-3 rounded-xl bg-[#0B1120] border border-slate-800 space-y-1.5 hover:border-cyan-500/40 transition-all";
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <span>${n.icon || '📌'}</span> ${n.title}
+            </span>
+            <span class="text-[10px] text-slate-400">${n.time || 'Agora'}</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">${n.text}</p>
+          ${n.action ? `
+            <div class="pt-1">
+              <button onclick="${n.action}" class="w-full py-1.5 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-sm">
+                ${n.actionLabel || 'Ver Detalhes'}
+              </button>
+            </div>
+          ` : ''}
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function openUpdateModal(info) {
+      pendingUpdateInfo = info;
+      const modal = document.getElementById('update-modal');
+      const verLbl = document.getElementById('update-modal-ver');
+      const notesEl = document.getElementById('update-modal-notes');
+      const progressWrap = document.getElementById('update-download-progress-wrap');
+      const confirmBtn = document.getElementById('update-modal-confirm-btn');
+
+      verLbl.textContent = `Nova Versão v${info.version}`;
+      notesEl.textContent = info.releaseNotes || 'Melhorias de desempenho e correções gerais no sistema.';
+      progressWrap.classList.add('hidden');
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = `<span>🚀 Confirmar e Atualizar</span>`;
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeUpdateModal() {
+      document.getElementById('update-modal').classList.add('hidden');
+    }
+
+    async function confirmDownloadUpdate() {
+      const confirmBtn = document.getElementById('update-modal-confirm-btn');
+      const progressWrap = document.getElementById('update-download-progress-wrap');
+      const cancelBtn = document.getElementById('update-modal-cancel-btn');
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = `<span>Baixando...</span>`;
+      cancelBtn.classList.add('hidden');
+      progressWrap.classList.remove('hidden');
+
+      if (isDesktop) {
+        await window.cscApi.downloadUpdateNow();
+      } else {
+        // Simulação para web preview
+        let pct = 0;
+        const sim = setInterval(() => {
+          pct += 20;
+          document.getElementById('update-download-pct-lbl').textContent = pct + '%';
+          document.getElementById('update-download-bar').style.width = pct + '%';
+          if (pct >= 100) {
+            clearInterval(sim);
+            document.getElementById('update-download-status-lbl').textContent = 'Pronto para instalar!';
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = `<span>🔄 Reiniciar Agora</span>`;
+            confirmBtn.onclick = () => {
+              showToast('Reiniciando aplicativo...');
+              closeUpdateModal();
+            };
+          }
+        }, 300);
+      }
+    }
+
     const isDesktop = typeof window.cscApi !== 'undefined';
     if (isDesktop) {
       document.getElementById('env-badge').textContent = 'Desktop App (.EXE Nativo)';
@@ -345,17 +610,48 @@
       window.cscApi.getAppVersion().then(v => {
         document.getElementById('env-badge').textContent = `Desktop v${v}`;
       });
+
       window.cscApi.onUpdateStatus((status) => {
         const pillText = document.getElementById('update-pill-text');
         if (pillText && status.message) {
           pillText.textContent = status.message;
         }
-        if (status.state === 'available' || status.state === 'downloaded') {
-          showToast(status.message);
+
+        if (status.state === 'available') {
+          // Adiciona ao sino de notificação
+          addNotification({
+            icon: '⚡',
+            title: `Nova Atualização v${status.version}`,
+            text: `Uma nova versão está disponível com novidades. Clique abaixo para ver o changelog e confirmar a instalação.`,
+            action: `openUpdateModal(${JSON.stringify(status)})`,
+            actionLabel: 'Ver Mudanças e Atualizar'
+          });
+          showToast(`Nova versão v${status.version} disponível no sino de notificações!`);
+        } else if (status.state === 'downloading') {
+          const wrap = document.getElementById('update-download-progress-wrap');
+          if (wrap && !wrap.classList.contains('hidden')) {
+            document.getElementById('update-download-pct-lbl').textContent = `${status.percent}%`;
+            document.getElementById('update-download-bar').style.width = `${status.percent}%`;
+          }
+        } else if (status.state === 'downloaded') {
+          const confirmBtn = document.getElementById('update-modal-confirm-btn');
+          if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = `<span>🔄 Reiniciar e Aplicar v${status.version}</span>`;
+            confirmBtn.onclick = () => window.cscApi.installUpdateNow();
+          }
+          addNotification({
+            icon: '✅',
+            title: `Download Concluído (v${status.version})`,
+            text: 'Arquivos prontos! Clique para reiniciar o aplicativo e aplicar as alterações.',
+            action: 'window.cscApi.installUpdateNow()',
+            actionLabel: 'Reiniciar e Aplicar Agora'
+          });
+          showToast(`Download da v${status.version} concluído! Pronto para reiniciar.`);
         }
       });
     } else {
-      document.getElementById('env-badge').textContent = 'Cloudflare Web Preview (v1.0.1)';
+      document.getElementById('env-badge').textContent = 'Cloudflare Web Preview (v1.0.6)';
     }
 
     async function manualCheckUpdates() {
@@ -366,7 +662,10 @@
           showToast('Modo Desenvolvimento: O Auto-Update roda automaticamente na versão instalada (.EXE).');
         }
       } else {
-        showToast('No PC, o aplicativo instalado baixa e aplica cada mudança do GitHub automaticamente!');
+        openUpdateModal({
+          version: '1.0.6',
+          releaseNotes: '- Tema Claro / Escuro (Lua e Sol) no topo da janela\n- Sino de Notificações com badge animado de atualizações\n- Confirmação antes de atualizar com exibição detalhada das mudanças'
+        });
       }
     }
 

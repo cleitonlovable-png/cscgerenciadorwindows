@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('cscApi', {
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdateNow: () => ipcRenderer.invoke('download-update-now'),
   installUpdateNow: () => ipcRenderer.invoke('install-update-now'),
   onUpdateStatus: (callback) => ipcRenderer.on('update-status', (_event, data) => callback(data)),
   getTelemetry: () => ipcRenderer.invoke('get-telemetry'),

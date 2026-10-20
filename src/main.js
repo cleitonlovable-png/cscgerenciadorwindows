@@ -14,18 +14,32 @@ function sendUpdateStatus(statusObj) {
 }
 
 function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  // Desativa autoDownload para o usuário confirmar antes de baixar/aplicar
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('checking-for-update', () => {
     sendUpdateStatus({ state: 'checking', message: 'Verificando atualizações...' });
   });
 
   autoUpdater.on('update-available', (info) => {
+    // Extrai notas da versão / release notes
+    let notes = '';
+    if (typeof info.releaseNotes === 'string') {
+      notes = info.releaseNotes;
+    } else if (Array.isArray(info.releaseNotes)) {
+      notes = info.releaseNotes.map(n => (typeof n === 'string' ? n : n.note || '')).join('\n');
+    }
+    if (!notes && info.releaseName) {
+      notes = info.releaseName;
+    }
+
     sendUpdateStatus({
       state: 'available',
       version: info.version,
-      message: `Nova versão v${info.version} encontrada! Baixando automaticamente...`
+      releaseDate: info.releaseDate || '',
+      releaseNotes: notes,
+      message: `Nova versão v${info.version} disponível!`
     });
   });
 
@@ -33,7 +47,7 @@ function setupAutoUpdater() {
     sendUpdateStatus({
       state: 'up-to-date',
       version: app.getVersion(),
-      message: `Atualizado (v${app.getVersion()})`
+      message: `Aplicativo atualizado (v${app.getVersion()})`
     });
   });
 
@@ -42,6 +56,7 @@ function setupAutoUpdater() {
     sendUpdateStatus({
       state: 'downloading',
       percent: pct,
+      bytesPerSecond: progressObj.bytesPerSecond,
       message: `Baixando atualização: ${pct}%`
     });
   });
@@ -50,27 +65,23 @@ function setupAutoUpdater() {
     sendUpdateStatus({
       state: 'downloaded',
       version: info.version,
-      message: `Atualização v${info.version} pronta! Reiniciando para aplicar...`
+      message: `Download concluído! Pronto para reiniciar e instalar a v${info.version}.`
     });
-    // Reinicia e instala automaticamente após 3 segundos
-    setTimeout(() => {
-      autoUpdater.quitAndInstall(true, true);
-    }, 3000);
   });
 
   autoUpdater.on('error', (err) => {
     sendUpdateStatus({
       state: 'error',
-      message: `Auto-Update pronto (v${app.getVersion()})`,
+      message: `Verificação de atualização: v${app.getVersion()}`,
       detail: String(err)
     });
   });
 
   // Checa ao iniciar e depois a cada 5 minutos
   if (app.isPackaged) {
-    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    autoUpdater.checkForUpdates().catch(() => {});
     setInterval(() => {
-      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+      autoUpdater.checkForUpdates().catch(() => {});
     }, 5 * 60 * 1000);
   }
 }
@@ -135,6 +146,18 @@ ipcMain.handle('check-for-updates', async () => {
     }
     const res = await autoUpdater.checkForUpdates();
     return { ok: true, version: app.getVersion(), updateInfo: res?.updateInfo };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('download-update-now', async () => {
+  try {
+    if (!app.isPackaged) {
+      return { ok: true, dev: true };
+    }
+    await autoUpdater.downloadUpdate();
+    return { ok: true };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
