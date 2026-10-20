@@ -323,6 +323,27 @@
             </div>
           </div>
         </div>
+
+        <!-- Seção: Consumo de Tokens das I.As -->
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-white">Monitor de Consumo de Tokens (I.A)</h3>
+                <span class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 font-semibold border border-cyan-500/30">Tempo Real</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">Acompanhamento do limite de tokens diário/mensal utilizado por cada Inteligência Artificial.</p>
+            </div>
+            <button onclick="simulateTokenRefresh()" class="px-3 py-1.5 rounded-lg bg-[#0B1120] hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-slate-800 text-xs font-medium transition-all flex items-center gap-1.5">
+              <span>🔄 Atualizar Tokens</span>
+            </button>
+          </div>
+
+          <!-- Grid dos Círculos de I.A -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="ai-tokens-container">
+            <!-- Os 4 cards circulares são renderizados dinamicamente pelo JS -->
+          </div>
+        </div>
       </section>
 
       <!-- ABA 2: APLICATIVOS -->
@@ -1273,7 +1294,123 @@
       showToast(`Excluído com sucesso: ${target.path}`);
     }
 
+    // Monitor de Consumo de Tokens de I.A
+    let aiModelsData = [
+      {
+        id: 'antigravity',
+        name: 'Antigravity',
+        company: 'Google DeepMind',
+        icon: '🌌',
+        colorClass: 'text-cyan-400',
+        strokeColor: '#22d3ee',
+        usedTokens: 148500,
+        maxTokens: 250000,
+        pct: 59,
+        status: 'Online • 4.8k TPM'
+      },
+      {
+        id: 'claude',
+        name: 'Claude 3.7 / 3.5',
+        company: 'Anthropic',
+        icon: '🎭',
+        colorClass: 'text-amber-400',
+        strokeColor: '#fbbf24',
+        usedTokens: 82000,
+        maxTokens: 200000,
+        pct: 41,
+        status: 'Online • 2.1k TPM'
+      },
+      {
+        id: 'codex',
+        name: 'OpenAI Codex',
+        company: 'OpenAI',
+        icon: '⚡',
+        colorClass: 'text-emerald-400',
+        strokeColor: '#34d399',
+        usedTokens: 182400,
+        maxTokens: 200000,
+        pct: 91,
+        status: 'Alto Uso • 7.4k TPM'
+      },
+      {
+        id: 'gemini',
+        name: 'Gemini Pro',
+        company: 'Google AI',
+        icon: '✨',
+        colorClass: 'text-purple-400',
+        strokeColor: '#c084fc',
+        usedTokens: 64000,
+        maxTokens: 300000,
+        pct: 21,
+        status: 'Online • 1.2k TPM'
+      }
+    ];
+
+    function renderAITokens() {
+      const container = document.getElementById('ai-tokens-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // Circunferência para raio r=38 (2 * PI * 38 ≈ 238.76)
+      const circumference = 239;
+
+      aiModelsData.forEach(ai => {
+        const strokeOffset = circumference - (circumference * ai.pct) / 100;
+        const usedStr = (ai.usedTokens >= 1000) ? (ai.usedTokens / 1000).toFixed(1) + 'k' : ai.usedTokens;
+        const maxStr = (ai.maxTokens >= 1000) ? (ai.maxTokens / 1000).toFixed(0) + 'k' : ai.maxTokens;
+
+        const card = document.createElement('div');
+        card.className = "p-4 rounded-xl bg-[#0B1120] border border-slate-800 hover:border-slate-700 transition-all flex flex-col items-center text-center space-y-3 relative overflow-hidden group";
+        card.innerHTML = `
+          <!-- Header do card com ícone e nome -->
+          <div class="flex items-center gap-2">
+            <span class="text-base">${ai.icon}</span>
+            <div class="text-left">
+              <div class="text-xs font-bold text-white group-hover:text-cyan-400 transition-colors">${ai.name}</div>
+              <div class="text-[10px] text-slate-400">${ai.company}</div>
+            </div>
+          </div>
+
+          <!-- Círculo SVG de Consumo de Tokens -->
+          <div class="relative w-24 h-24 flex items-center justify-center my-1">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 90 90">
+              <circle cx="45" cy="45" r="38" stroke="currentColor" stroke-width="6" class="text-slate-800" fill="transparent"/>
+              <circle cx="45" cy="45" r="38" stroke="${ai.strokeColor}" stroke-width="6" stroke-linecap="round" class="transition-all duration-700 ease-out" stroke-dasharray="${circumference}" stroke-dashoffset="${strokeOffset}" fill="transparent"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-base font-extrabold ${ai.colorClass}">${ai.pct}%</span>
+              <span class="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Usado</span>
+            </div>
+          </div>
+
+          <!-- Estatísticas de Tokens e Status -->
+          <div class="w-full space-y-1.5 pt-1 border-t border-slate-800/80 text-[11px]">
+            <div class="flex items-center justify-between text-slate-400">
+              <span>Tokens:</span>
+              <span class="text-slate-200 font-mono font-medium">${usedStr} / ${maxStr}</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400">
+              <span>Status:</span>
+              <span class="text-[10px] font-medium ${ai.pct > 80 ? 'text-rose-400' : 'text-emerald-400'}">${ai.status}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function simulateTokenRefresh() {
+      aiModelsData.forEach(ai => {
+        const delta = Math.floor(Math.random() * 8000) - 2000;
+        ai.usedTokens = Math.max(10000, Math.min(ai.maxTokens, ai.usedTokens + delta));
+        ai.pct = Math.round((ai.usedTokens / ai.maxTokens) * 100);
+      });
+      renderAITokens();
+      showToast('Consumo de tokens de I.A atualizado em tempo real!');
+    }
+
     // Inicialização
+    renderAITokens();
     loadTelemetry();
     loadApps();
     loadDisks();
