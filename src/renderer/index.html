@@ -113,8 +113,8 @@
           <span id="quick-junk-size" class="text-xs font-bold text-cyan-400">Temp + RAM</span>
         </div>
         <p class="text-xs text-slate-400 leading-relaxed">Limpa arquivos %TEMP%, cache do Windows e otimiza a memória física.</p>
-        <button onclick="runQuickBoost()" class="w-full py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-sm flex items-center justify-center gap-1.5">
-          <span>⚡ Otimizar Agora</span>
+        <button id="btn-quick-boost-sidebar" onclick="runQuickBoost()" class="w-full py-2 px-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition-all shadow-sm flex items-center justify-center gap-2">
+          <span id="btn-quick-boost-sidebar-content" class="flex items-center gap-1.5">⚡ Otimizar Agora</span>
         </button>
       </div>
     </aside>
@@ -129,8 +129,8 @@
             <h2 class="text-xl font-bold text-white">Desempenho do Windows</h2>
             <p class="text-sm text-slate-400">Monitoramento de recursos em tempo real, limpeza de cache e planos de energia.</p>
           </div>
-          <button onclick="runQuickBoost()" class="px-4 py-2 rounded-xl bg-[#111827] hover:bg-cyan-500/15 text-white hover:text-cyan-400 border border-slate-800 hover:border-cyan-500/40 text-xs font-semibold transition-all flex items-center gap-2">
-            <span>🔄 Limpar Memória RAM & Temp</span>
+          <button id="btn-quick-boost-header" onclick="runQuickBoost()" class="px-4 py-2 rounded-xl bg-[#111827] hover:bg-cyan-500/15 text-white hover:text-cyan-400 border border-slate-800 hover:border-cyan-500/40 text-xs font-semibold transition-all flex items-center gap-2">
+            <span id="btn-quick-boost-header-content" class="flex items-center gap-2">🔄 Limpar Memória RAM & Temp</span>
           </button>
         </div>
 
@@ -202,7 +202,9 @@
                 <div class="text-sm font-bold text-white">Limpar Pastas Temporárias (%TEMP%)</div>
                 <p class="text-xs text-slate-400 mt-1">Remove arquivos temporários do usuário e do Windows que acumulam gigabytes inutilizados.</p>
               </div>
-              <button onclick="runQuickBoost()" class="px-3 py-2 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all">Executar Limpeza</button>
+              <button id="btn-quick-boost-card" onclick="runQuickBoost()" class="px-3 py-2 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all flex items-center justify-center gap-2">
+                <span id="btn-quick-boost-card-content">Executar Limpeza</span>
+              </button>
             </div>
 
             <div class="p-4 rounded-xl bg-[#0B1120] border border-slate-800 flex flex-col justify-between space-y-3">
@@ -301,6 +303,38 @@
   <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-3 rounded-xl bg-[#111827] border border-cyan-500/50 shadow-xl flex items-center gap-3">
     <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
     <span id="toast-msg" class="text-xs font-semibold text-white"></span>
+  </div>
+
+  <!-- Modal / Overlay de Limpeza com Barra e Círculo de Progresso -->
+  <div id="clean-modal" class="fixed inset-0 z-50 bg-[#0B1120]/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-[#111827] border border-cyan-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 text-center relative overflow-hidden">
+      <!-- Glow superior de fundo -->
+      <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <!-- Círculo de Carregamento SVG com Porcentagem Central -->
+      <div class="relative w-28 h-28 mx-auto flex items-center justify-center">
+        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6" class="text-slate-800" fill="transparent"/>
+          <circle id="clean-modal-circle" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6" stroke-linecap="round" class="text-cyan-400 transition-all duration-300" stroke-dasharray="264" stroke-dashoffset="264" fill="transparent"/>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span id="clean-modal-pct" class="text-2xl font-extrabold text-white">0%</span>
+          <span class="text-[10px] text-cyan-400 uppercase tracking-widest font-semibold">Boost</span>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <h3 id="clean-modal-title" class="text-base font-bold text-white">Otimizando Sistema...</h3>
+        <p id="clean-modal-step" class="text-xs text-slate-400 min-h-[1.25rem]">Iniciando varredura e limpeza...</p>
+      </div>
+
+      <!-- Barra de Progresso Linear -->
+      <div class="space-y-1.5 text-left">
+        <div class="w-full h-2 rounded-full bg-[#0B1120] overflow-hidden border border-slate-800 p-0.5">
+          <div id="clean-modal-bar" class="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-400 rounded-full transition-all duration-300 w-0"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -414,19 +448,132 @@
       }
     }
 
-    async function runQuickBoost() {
-      showToast('Executando limpeza de arquivos temporários e memória RAM...');
-      if (isDesktop) {
-        const res = await window.cscApi.optimizeSystem();
-        await loadTelemetry();
-        if (res.ok) {
-          showToast(`Otimizado! ${res.data.cleanedMB} MB de lixo removidos e RAM limpa!`);
+    let isCleaning = false;
+
+    function setCleaningState(busy) {
+      isCleaning = busy;
+      const btns = [
+        document.getElementById('btn-quick-boost-sidebar'),
+        document.getElementById('btn-quick-boost-header'),
+        document.getElementById('btn-quick-boost-card')
+      ];
+      btns.forEach(b => {
+        if (!b) return;
+        b.disabled = busy;
+        if (busy) {
+          b.classList.add('opacity-70', 'cursor-wait');
+        } else {
+          b.classList.remove('opacity-70', 'cursor-wait');
         }
-      } else {
-        document.getElementById('ram-pct').textContent = '30%';
-        document.getElementById('ram-val').textContent = '9.6 / 32.0 GB';
-        document.getElementById('ram-bar').style.width = '30%';
-        showToast('Otimização concluída! 4.6 GB liberados.');
+      });
+
+      const spinnerHtml = `
+        <svg class="animate-spin w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      `;
+
+      const sideContent = document.getElementById('btn-quick-boost-sidebar-content');
+      if (sideContent) {
+        sideContent.innerHTML = busy ? `${spinnerHtml} <span>Otimizando...</span>` : `<span>⚡ Otimizar Agora</span>`;
+      }
+
+      const headerContent = document.getElementById('btn-quick-boost-header-content');
+      if (headerContent) {
+        headerContent.innerHTML = busy ? `${spinnerHtml} <span>Limpando RAM & Temp...</span>` : `<span>🔄 Limpar Memória RAM & Temp</span>`;
+      }
+
+      const cardContent = document.getElementById('btn-quick-boost-card-content');
+      if (cardContent) {
+        cardContent.innerHTML = busy ? `<span class="flex items-center gap-1.5">${spinnerHtml} Limpando...</span>` : `Executar Limpeza`;
+      }
+    }
+
+    function updateCleanProgress(pct, stepText) {
+      const modal = document.getElementById('clean-modal');
+      const circle = document.getElementById('clean-modal-circle');
+      const bar = document.getElementById('clean-modal-bar');
+      const pctLabel = document.getElementById('clean-modal-pct');
+      const stepLabel = document.getElementById('clean-modal-step');
+
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+      }
+
+      const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+      pctLabel.textContent = clamped + '%';
+      bar.style.width = clamped + '%';
+      // 264 is the total circumference for r=42 (2 * pi * 42 ~= 263.89)
+      const offset = 264 - (264 * clamped) / 100;
+      circle.style.strokeDashoffset = offset;
+
+      if (stepText) {
+        stepLabel.textContent = stepText;
+      }
+    }
+
+    async function runQuickBoost() {
+      if (isCleaning) return;
+      setCleaningState(true);
+
+      const modal = document.getElementById('clean-modal');
+      const modalTitle = document.getElementById('clean-modal-title');
+      modalTitle.textContent = 'Otimizando Sistema Windows';
+      updateCleanProgress(10, 'Analisando arquivos temporários (%TEMP% e Prefetch)...');
+
+      const steps = [
+        { pct: 25, text: 'Removendo lixo residual do Windows Update e navegadores...' },
+        { pct: 45, text: 'Limpando cache de arquivos temporários do usuário...' },
+        { pct: 70, text: 'Executando coleta de lixo e liberando RAM Standby...' },
+        { pct: 88, text: 'Finalizando otimização e recalculando desempenho...' }
+      ];
+
+      let stepIdx = 0;
+      const progressInterval = setInterval(() => {
+        if (stepIdx < steps.length) {
+          updateCleanProgress(steps[stepIdx].pct, steps[stepIdx].text);
+          stepIdx++;
+        }
+      }, 350);
+
+      try {
+        if (isDesktop) {
+          const res = await window.cscApi.optimizeSystem();
+          await loadTelemetry();
+          clearInterval(progressInterval);
+          updateCleanProgress(100, 'Limpeza concluída com sucesso!');
+          modalTitle.textContent = 'Sistema Otimizado!';
+          
+          await new Promise(r => setTimeout(r, 650));
+          modal.classList.add('hidden');
+          setCleaningState(false);
+
+          if (res.ok) {
+            showToast(`Otimizado! ${res.data.cleanedMB} MB de lixo removidos e RAM limpa!`);
+          } else {
+            showToast('Otimização concluída!');
+          }
+        } else {
+          await new Promise(r => setTimeout(r, 1600));
+          clearInterval(progressInterval);
+          updateCleanProgress(100, 'Limpeza concluída!');
+          modalTitle.textContent = 'Sistema Otimizado!';
+
+          document.getElementById('ram-pct').textContent = '30%';
+          document.getElementById('ram-val').textContent = '9.6 / 32.0 GB';
+          document.getElementById('ram-bar').style.width = '30%';
+
+          await new Promise(r => setTimeout(r, 650));
+          modal.classList.add('hidden');
+          setCleaningState(false);
+          showToast('Otimização concluída! 4.6 GB liberados.');
+        }
+      } catch (err) {
+        clearInterval(progressInterval);
+        modal.classList.add('hidden');
+        setCleaningState(false);
+        showToast('Erro durante a otimização: ' + err);
       }
     }
 

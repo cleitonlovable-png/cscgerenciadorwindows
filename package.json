@@ -1,6 +1,6 @@
 {
   "name": "csc-gerenciador",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "CSC Gerenciador — Suite de Desempenho, Aplicativos e Análise de Disco para Windows",
   "main": "src/main.js",
   "author": "CSC Labs",
