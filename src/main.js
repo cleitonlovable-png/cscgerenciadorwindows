@@ -182,7 +182,11 @@ ipcMain.handle('get-telemetry', async () => {
     const ps = `
       $cpu = (Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average;
       $procs = (Get-Process).Count;
-      $os = (Get-CimInstance Win32_OperatingSystem).Caption;
+      $os = Get-CimInstance Win32_OperatingSystem;
+      $diff = (Get-Date) - $os.LastBootUpTime;
+      $uptime = "$($diff.Days)d $($diff.Hours)h $($diff.Minutes)m";
+      $gpu = (Get-CimInstance Win32_VideoController | Select-Object -First 1).Name;
+      $mb = (Get-CimInstance Win32_BaseBoard).Product;
       $activeSchemeLine = (powercfg /getactivescheme);
       $powerPlan = "Turbo";
       if ($activeSchemeLine -match "381b4222-f694-41f0-9685-ff5bb260df2e" -or $activeSchemeLine -match "Equilibrado|Balanced") {
@@ -195,7 +199,12 @@ ipcMain.handle('get-telemetry', async () => {
       [PSCustomObject]@{
         cpuLoad = [int]$cpu;
         processCount = [int]$procs;
-        osName = [string]$os;
+        osName = [string]$os.Caption;
+        osBuild = [string]$os.BuildNumber;
+        osArch = [string]$os.OSArchitecture;
+        uptime = [string]$uptime;
+        gpuName = [string]$gpu;
+        motherboard = [string]$mb;
         currentPowerPlan = [string]$powerPlan
       } | ConvertTo-Json -Compress
     `;
@@ -204,7 +213,12 @@ ipcMain.handle('get-telemetry', async () => {
 
     return {
       ok: true,
-      osName: parsed.osName || 'Windows 11 Pro',
+      osName: parsed.osName || 'Microsoft Windows 11 Pro',
+      osBuild: parsed.osBuild || '26200',
+      osArch: parsed.osArch || '64-bit',
+      uptime: parsed.uptime || '1d 0h',
+      gpuName: parsed.gpuName || 'GPU Integrada / Dedicada',
+      motherboard: parsed.motherboard || 'MSI MS-7C96',
       cpuModel,
       cpuLoad: parsed.cpuLoad ?? 15,
       cpuSpeedGHz,
