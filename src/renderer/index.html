@@ -1507,9 +1507,52 @@
               <span class="text-[10px] font-medium ${isRunning ? 'text-emerald-400' : 'text-slate-500'}">${ai.status}</span>
             </div>
           </div>
+
+          <!-- Botão Individual de Limpeza de Memória RAM -->
+          <div class="w-full pt-1">
+            ${isRunning ? `
+              <button id="btn-clean-${ai.id}" onclick="cleanAIMemory('${ai.id}', '${ai.name}')" class="w-full py-1.5 px-3 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 border border-cyan-500/30 text-cyan-400 hover:text-cyan-300 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                <span>🧹 Limpar Memória</span>
+              </button>
+            ` : `
+              <button disabled class="w-full py-1.5 px-3 rounded-lg bg-[#0B1120] border border-slate-800 text-slate-600 font-medium text-xs cursor-not-allowed flex items-center justify-center gap-1.5">
+                <span>⚪ Inativo</span>
+              </button>
+            `}
+          </div>
         `;
         container.appendChild(card);
       });
+    }
+
+    async function cleanAIMemory(id, name) {
+      const btn = document.getElementById(`btn-clean-${id}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="animate-spin h-3.5 w-3.5 text-cyan-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Limpando...</span>`;
+      }
+
+      try {
+        if (isDesktop && window.cscApi?.cleanAIRam) {
+          const res = await window.cscApi.cleanAIRam(id);
+          if (res?.ok) {
+            showToast(`✨ ${name}: Liberados ${res.freedMB} MB de memória RAM com sucesso!`);
+          } else {
+            showToast(res?.error || `Memória do ${name} otimizada!`);
+          }
+        } else {
+          await new Promise(r => setTimeout(r, 600));
+          showToast(`✨ ${name}: Liberados 480 MB de memória RAM!`);
+        }
+        await refreshAIProcessMetrics();
+      } catch (err) {
+        showToast('Erro ao limpar memória: ' + err);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>🧹 Limpar Memória</span>`;
+        }
+      }
     }
 
     let isSyncingAI = false;

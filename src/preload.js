@@ -18,5 +18,6 @@ contextBridge.exposeInMainWorld('cscApi', {
   saveAIKeys: (keys) => ipcRenderer.invoke('save-ai-keys', keys),
   loadAIKeys: () => ipcRenderer.invoke('load-ai-keys'),
   fetchAIUsage: (keys) => ipcRenderer.invoke('fetch-ai-usage', keys),
-  getAIProcessTelemetry: () => ipcRenderer.invoke('get-ai-process-telemetry')
+  getAIProcessTelemetry: () => ipcRenderer.invoke('get-ai-process-telemetry'),
+  cleanAIRam: (targetId) => ipcRenderer.invoke('clean-ai-ram', targetId)
 });

@@ -593,6 +593,66 @@ ipcMain.handle('get-ai-process-telemetry', async () => {
   }
 });
 
+ipcMain.handle('clean-ai-ram', async (_event, targetId) => {
+  try {
+    const patternMap = {
+      antigravity: 'Antigravity*',
+      codex: 'codex*',
+      claude: 'Claude*',
+      gemini: 'gemini*'
+    };
+    const pattern = patternMap[targetId] || `${targetId}*`;
+
+    const ps = `
+      $code = @'
+      using System;
+      using System.Runtime.InteropServices;
+      public class Win32RAM {
+          [DllImport("psapi.dll")]
+          public static extern int EmptyWorkingSet(IntPtr hwProc);
+      }
+      '@
+      if (-not ([System.Management.Automation.PSTypeName]'Win32RAM').Type) {
+          Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue
+      }
+
+      $procs = Get-Process -Name "${pattern}" -ErrorAction SilentlyContinue
+      if (-not $procs) {
+          return @{ ok = $false; error = "Nenhum processo ativo no momento" } | ConvertTo-Json -Compress
+      }
+
+      $beforeBytes = ($procs | Measure-Object -Property WorkingSet64 -Sum).Sum
+      $beforeMB = [math]::Round($beforeBytes / 1MB, 1)
+
+      $procs | ForEach-Object {
+          try { [Win32RAM]::EmptyWorkingSet($_.Handle) | Out-Null } catch {}
+      }
+
+      Start-Sleep -Milliseconds 350
+      [System.GC]::Collect()
+
+      $afterProcs = Get-Process -Name "${pattern}" -ErrorAction SilentlyContinue
+      $afterBytes = if ($afterProcs) { ($afterProcs | Measure-Object -Property WorkingSet64 -Sum).Sum } else { 0 }
+      $afterMB = [math]::Round($afterBytes / 1MB, 1)
+      $freedMB = [math]::Max(0, [math]::Round($beforeMB - $afterMB, 1))
+
+      @{
+          ok = $true;
+          beforeMB = $beforeMB;
+          afterMB = $afterMB;
+          freedMB = $freedMB;
+          count = $procs.Count
+      } | ConvertTo-Json -Compress
+    `;
+
+    const out = await runPowerShell(ps);
+    const parsed = JSON.parse(out || '{}');
+    return parsed;
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
 ipcMain.handle('fetch-ai-usage', async (_event, providedKeys) => {
   let keys = providedKeys;
   if (!keys) {
