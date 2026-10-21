@@ -342,7 +342,7 @@
               <p class="text-xs text-slate-400 mt-0.5">Uso real de hardware e memória RAM consumida pelos processos de Inteligência Artificial no seu Windows.</p>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="refreshAIProcessMetrics()" class="px-3.5 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm">
+              <button id="ai-refresh-btn" onclick="refreshAIProcessMetrics()" class="px-3.5 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-500/30 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm">
                 <span>🔄 Atualizar Métricas</span>
               </button>
             </div>
@@ -598,25 +598,27 @@
     async function handleTopRefresh() {
       const icon = document.getElementById('top-refresh-icon');
       if (icon) icon.classList.add('animate-spin');
-      showToast('Atualizando todas as informações do computador...');
+      showToast('Atualizando métricas do computador...');
+
+      const stopSpin = () => {
+        if (icon) icon.classList.remove('animate-spin');
+      };
+
+      // Timer de segurança: garante a parada da animação em no máximo 1.5s
+      const fallbackTimer = setTimeout(stopSpin, 1500);
 
       try {
-        await Promise.all([
+        await Promise.allSettled([
           loadTelemetry(),
-          loadDisks(),
-          loadApps()
+          loadDisks(true),
+          refreshAIProcessMetrics()
         ]);
-        if (typeof renderAITokens === 'function') {
-          renderAITokens();
-        }
         showToast('Informações do PC atualizadas com sucesso!');
       } catch (e) {
         console.error(e);
-        showToast('Erro ao atualizar informações: ' + e);
       } finally {
-        setTimeout(() => {
-          if (icon) icon.classList.remove('animate-spin');
-        }, 800);
+        clearTimeout(fallbackTimer);
+        setTimeout(stopSpin, 300);
       }
     }
 
@@ -1255,7 +1257,7 @@
       }
     }
 
-    async function loadDisks() {
+    async function loadDisks(skipDeepScan = false) {
       if (isDesktop) {
         const res = await window.cscApi.getDisks();
         disksList = (res.ok && res.disks.length) ? res.disks : fallbackDisks;
@@ -1267,7 +1269,9 @@
       }
       document.getElementById('badge-disk-count').textContent = `${disksList.length} Discos`;
       renderDisks();
-      await scanSelectedDisk();
+      if (!skipDeepScan) {
+        await scanSelectedDisk();
+      }
     }
 
     function renderDisks() {
@@ -1513,15 +1517,22 @@
       if (isSyncingAI) return;
       isSyncingAI = true;
 
-      const btn = document.querySelector('button[onclick="refreshAIProcessMetrics()"]');
+      const btn = document.getElementById('ai-refresh-btn') || document.querySelector('button[onclick="refreshAIProcessMetrics()"]');
       if (btn) {
         btn.innerHTML = `<svg class="animate-spin h-3.5 w-3.5 mr-1 text-cyan-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>Lendo Windows...</span>`;
       }
 
+      const stopSync = () => {
+        if (btn) btn.innerHTML = `<span>🔄 Atualizar Métricas</span>`;
+        isSyncingAI = false;
+      };
+
+      const safetyTimer = setTimeout(stopSync, 1800);
+
       try {
         if (isDesktop && window.cscApi?.getAIProcessTelemetry) {
           const res = await window.cscApi.getAIProcessTelemetry();
-          if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+          if (res?.ok && Array.isArray(res.data) && res.data.length > 0) {
             res.data.forEach(item => {
               if (item.id === 'antigravity') {
                 item.icon = '🌌';
@@ -1552,10 +1563,8 @@
       } catch (err) {
         console.error('Erro ao ler processos de IA:', err);
       } finally {
-        isSyncingAI = false;
-        if (btn) {
-          btn.innerHTML = `<span>🔄 Atualizar Métricas</span>`;
-        }
+        clearTimeout(safetyTimer);
+        setTimeout(stopSync, 300);
       }
     }
 

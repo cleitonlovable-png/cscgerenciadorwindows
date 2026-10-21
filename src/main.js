@@ -444,7 +444,8 @@ ipcMain.handle('scan-disk', async (_event, driveId) => {
         $full = $_.FullName;
         $isSafe = ($full -notmatch '^(C:\\\\Windows|C:\\\\Program Files|C:\\\\ProgramData|G:\\\\CSC Gerenciador)');
         if ($_.PSIsContainer) {
-          $sum = (Get-ChildItem -Path $full -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum;
+          # Leitura rápida sem travar a máquina com recursão profunda
+          $sum = (Get-ChildItem -Path $full -File -Force -ErrorAction SilentlyContinue | Select-Object -First 200 | Measure-Object -Property Length -Sum).Sum;
           $sizeMB = [math]::Round(($sum / 1MB), 1);
         } else {
           $sizeMB = [math]::Round(($_.Length / 1MB), 1);
