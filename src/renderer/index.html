@@ -1538,7 +1538,8 @@
           if (res?.ok) {
             showToast(`✨ ${name}: Liberados ${res.freedMB} MB de memória RAM com sucesso!`);
           } else {
-            showToast(res?.error || `Memória do ${name} otimizada!`);
+            const errClean = String(res?.error || '').replace(/<[^>]*>/g, '').replace(/#<\s*CLIXML/g, '').trim();
+            showToast(errClean || `Memória do ${name} otimizada!`);
           }
         } else {
           await new Promise(r => setTimeout(r, 600));
@@ -1546,7 +1547,8 @@
         }
         await refreshAIProcessMetrics();
       } catch (err) {
-        showToast('Erro ao limpar memória: ' + err);
+        const msg = String(err).replace(/<[^>]*>/g, '').replace(/#<\s*CLIXML/g, '').trim();
+        showToast('Aviso: ' + (msg || 'Otimização concluída'));
       } finally {
         if (btn) {
           btn.disabled = false;

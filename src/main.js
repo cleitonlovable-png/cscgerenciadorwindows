@@ -604,14 +604,9 @@ ipcMain.handle('clean-ai-ram', async (_event, targetId) => {
     const pattern = patternMap[targetId] || `${targetId}*`;
 
     const ps = `
-      $code = @'
-      using System;
-      using System.Runtime.InteropServices;
-      public class Win32RAM {
-          [DllImport("psapi.dll")]
-          public static extern int EmptyWorkingSet(IntPtr hwProc);
-      }
-      '@
+      $ProgressPreference = 'SilentlyContinue';
+      $WarningPreference = 'SilentlyContinue';
+      $code = 'using System; using System.Runtime.InteropServices; public class Win32RAM { [DllImport("psapi.dll")] public static extern int EmptyWorkingSet(IntPtr hwProc); }';
       if (-not ([System.Management.Automation.PSTypeName]'Win32RAM').Type) {
           Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue
       }
@@ -646,7 +641,8 @@ ipcMain.handle('clean-ai-ram', async (_event, targetId) => {
     `;
 
     const out = await runPowerShell(ps);
-    const parsed = JSON.parse(out || '{}');
+    const jsonMatch = (out || '').match(/\{[\s\S]*\}/);
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(out || '{}');
     return parsed;
   } catch (err) {
     return { ok: false, error: String(err) };
