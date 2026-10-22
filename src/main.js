@@ -438,29 +438,61 @@ ipcMain.handle('scan-disk', async (_event, driveId) => {
   try {
     const cleanDrive = String(driveId || 'C:').replace(/[^a-zA-Z:]/g, '');
     const ps = `
+      $ErrorActionPreference = 'SilentlyContinue';
+      if (-not ('FolderSizeScanner' -as [type])) {
+        $cs = @'
+using System;
+using System.IO;
+
+public class FolderSizeScanner {
+    public static long GetSize(string path, int maxDepth, int depth) {
+        long total = 0;
+        try {
+            DirectoryInfo di = new DirectoryInfo(path);
+            foreach (FileInfo fi in di.EnumerateFiles("*", SearchOption.TopDirectoryOnly)) {
+                try { total += fi.Length; } catch {}
+            }
+            if (depth < maxDepth) {
+                foreach (DirectoryInfo sub in di.EnumerateDirectories("*", SearchOption.TopDirectoryOnly)) {
+                    if ((sub.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                    try {
+                        total += GetSize(sub.FullName, maxDepth, depth + 1);
+                    } catch {}
+                }
+            }
+        } catch {}
+        return total;
+    }
+}
+'@
+        Add-Type -TypeDefinition $cs -Language CSharp -IgnoreWarnings
+      }
+
       $root = "${cleanDrive}\\";
       $items = @();
-      Get-ChildItem -Path $root -Force -ErrorAction SilentlyContinue | Select-Object -First 25 | ForEach-Object {
-        $full = $_.FullName;
-        $isSafe = ($full -notmatch '^(C:\\\\Windows|C:\\\\Program Files|C:\\\\ProgramData|G:\\\\CSC Gerenciador)');
-        if ($_.PSIsContainer) {
-          # Leitura rápida sem travar a máquina com recursão profunda
-          $sum = (Get-ChildItem -Path $full -File -Force -ErrorAction SilentlyContinue | Select-Object -First 200 | Measure-Object -Property Length -Sum).Sum;
-          $sizeMB = [math]::Round(($sum / 1MB), 1);
-        } else {
-          $sizeMB = [math]::Round(($_.Length / 1MB), 1);
-        }
-        if ($sizeMB -gt 5) {
-          $items += [PSCustomObject]@{
-            path = $full;
-            isDir = [bool]$_.PSIsContainer;
-            sizeMB = [double]$sizeMB;
-            sizeGB = [math]::Round($sizeMB / 1024, 2);
-            safe = [bool]$isSafe
+      Get-ChildItem -LiteralPath $root -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch '^\$RECYCLE\.BIN$|^System Volume Information$' } |
+        ForEach-Object {
+          $full = $_.FullName;
+          $isSafe = ($full -notmatch '^(C:\\\\Windows|C:\\\\Program Files|C:\\\\ProgramData|G:\\\\CSC Gerenciador)');
+          $bytes = [int64]0;
+          if ($_.PSIsContainer) {
+            $bytes = [FolderSizeScanner]::GetSize($full, 8, 0);
+          } else {
+            $bytes = [int64]$_.Length;
           }
-        }
-      };
-      $items | Sort-Object sizeMB -Descending | Select-Object -First 15 | ConvertTo-Json -Compress
+          $sizeMB = [math]::Round(($bytes / 1MB), 1);
+          if ($sizeMB -ge 1) {
+            $items += [PSCustomObject]@{
+              path = $full;
+              isDir = [bool]$_.PSIsContainer;
+              sizeMB = [double]$sizeMB;
+              sizeGB = [math]::Round($sizeMB / 1024, 2);
+              safe = [bool]$isSafe
+            }
+          }
+        };
+      $items | Sort-Object sizeMB -Descending | Select-Object -First 30 | ConvertTo-Json -Compress
     `;
     const out = await runPowerShell(ps);
     const parsed = JSON.parse(out || '[]');
